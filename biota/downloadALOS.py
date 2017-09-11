@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 
+import argparse
 import datetime
+import ftplib
 import os
 import subprocess
 import tarfile
+
+import pdb
 
 """
 This is a simple script to assist in the downloading of data from the ALOS mosaic product.
@@ -16,9 +20,9 @@ def generateURL(lat, lon, year):
     """
     
     # Test that inputs are reasonable lats/lons/years
-    assert lat % 5 == 0, "Latitudes must be a multiple of 5°."
-    assert lon % 5 == 0, "Longitudes must be a multiple of 5°."
-    assert (year > 2007 and year < 2010) or (year > 2015 and year < datetime.datetime.now().year), "Years must be in the range 2007 - 2010 and 2015 - present. Your year was %s."%str(year)
+    assert lat % 5 == 0, "Latitudes must be a multiple of 5 degrees."
+    assert lon % 5 == 0, "Longitudes must be a multiple of 5 degrees."
+    assert (year >= 2007 and year <= 2010) or (year >= 2015 and year <= datetime.datetime.now().year), "Years must be in the range 2007 - 2010 and 2015 - present. Your year was %s."%str(year)
     
     # Get hemisphere
     hem_NS = 'S' if lat < 0 else 'N'
@@ -40,7 +44,7 @@ def download(url, output_dir = os.getcwd()):
     Download data from JAXA FTP server
     """
     
-    subprocess.call(['wget', command, '-P', output_dir])
+    subprocess.call(['wget', url, '-P', output_dir])
     
     return command.split('/')[-1]
 
@@ -89,19 +93,30 @@ def main(lat, lon, year, output_dir = os.getcwd(), remove = False):
 
     
     
-def extractRange(inputString):
+def getYears(inputString):
     """
-    Function to separate argparse inputs, where two values may be separated  by :. Returns a list of integers.
+    Function to separate argparse inputs, where two values may be separated  by :.
+    Reduces input years to those available for the ALOS mosaic (or may be available in future).
     """
     
     if ':' in inputString:
-        out = inputString.split(':')
-        assert len(out)==2, "Input ranges for lat/lon/year should be specified in the format <min>:<max>."
-        out = [int(i) for i in out]
+        years = inputString.split(':')
+        assert len(years) == 2, "Input ranges for year should be specified in the format <min>:<max>."
+        years = range(int(years[0]), int(years[1]) + 1, 1)
     else:
-        out = [int(inputString)]
+        years = [int(inputString), int(inputString) + 1]
+      
+    # Remove years before ALOS-1
+    years = [y for y in years if y >= 2007]
     
-    return out
+    # Remove years between ALOS-1 and ALOS-2
+    years = [y for y in years if y <= 2010 or y >= 2015]
+    
+    # Remove years from the future, which can't possibly exist yet.
+    years = [y for y in years if y <= datetime.datetime.now().year]
+    
+    return years
+
 
 
 def getDegrees(degrees):
@@ -109,26 +124,13 @@ def getDegrees(degrees):
     ALOS mosaic tiles are distributed in 5x5 degree tiles. Any latitude or longitude not divisible by 5 should be removed.
     """
     
+    degrees = range(degrees[0], degrees[1] + 1, 1)
+    
     degrees = [d for d in degrees if d % 5 == 0]
     
     return degrees
 
 
-def getYears(years):
-    """
-    Reduces input years to those available for the ALOS mosaic (or may be available in future).
-    """
-    
-    # Remove years before ALOS-1
-    years = [y for y in years if y < 2007]
-    
-    # Remove years between ALOS-1 and ALOS-2
-    years = [y for y in years if y > 2010 and y < 2015]
-    
-    # Remove years from the future, which can't possibly exist yet.
-    years = [y for y in years if y > datetime.datetime.now().year]
-            
-    return years
 
 
 if __name__ == '__main__':
@@ -137,34 +139,20 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'Download ALOS-1/2 data from JAXA, specifying a particular year and latitude/longitude.')
 
     # Required arguments
-    parser.add_argument('-lat', '--latitude', type = str, help = "Latitude of tile lower-left corner. Must be a multiple of 5°.")
-    parser.add_argument('-lon', '--longitude', type = str, help = "Longitude of tile lower-left corner. Must be a multiple of 5°.")
-    parser.add_argument('-y', '--year', type = str, help = "Year of data to download.")
+    parser.add_argument('-lat', '--latitude', type = int, help = "Latitude of tile lower-left corner. Must be a multiple of 5 degrees.")
+    parser.add_argument('-lon', '--longitude', type = int, help = "Longitude of tile lower-left corner. Must be a multiple of 5 degrees.")
 
     # Optional arguments
+    parser.add_argument('-y', '--year', type = str, default = '2007:%s'%str(datetime.datetime.now().year), help = "Year of data to download. Defaults to downloading all data.")
     parser.add_argument('-o', '--output_dir', type = str, default = os.getcwd(), help = "Optionally specify an output directory. Defaults to the present working directory.")
     parser.add_argument('-r', '--remove', action='store_true', default = False, help = "Optionally remove downloaded .zip files after decompression.")
 
     # Get arguments from command line
     args = parser.parse_args()
     
-    # Extract ranges of lat/lon/year.
-    lats = extractRange(args.lat)
-    lons = extractRange(args.lon)
-    years = extractRange(args.year)
+    # Extract ranges of year
+    years = getYears(args.year)
     
-    # Remove years that don't exist and lats/lons not divisible by 5
-    lats = getDegrees(lats)
-    lons = getDegrees(lons)
-    years = getYears(lons)
-    
-    # Test that inputs have resulted in reasonable lats/lons/years
-    assert len(lats) > 0, "Latitudes must be a multiple of 5°, or encompass a range containing values that are a multiple of 5°."
-    assert len(lons) > 0, "Longitudes must be a multiple of 5°, or encompass a range containing values that are a multiple of 5°."
-    assert len(years) > 0, "Years must be in the range 2007 - 2010 and 2015 - present, or encompass a range containing years within these ranges."
-
     # Run through entire processing sequence
     for year in years:
-        for lat in lats:
-            for lon in lons:
-                main(lat, lon, year, output = args.output_dir, remove = args.remove)
+        main(args.latitude, args.longitude, year, output_dir = args.output_dir, remove = args.remove)
