@@ -53,13 +53,15 @@ def decompress(filename, dataloc = os.getcwd(), remove = False):
     '''
     
     # Get a list of zip files matching the Level 1C file pattern
-    targz_file = dataloc + filename
+    targz_file = '%s/%s'%(dataloc, filename)
     
     assert targz_file.endswith("tar.gz"), "File name must end with .tar.gz to be decompressed."
     
-    tar = tarfile.open(targz_file, "r:gz")
-    tar.extractall()
-    tar.close()
+    print 'Extracting %s'%targz_file
+    
+    #tar = tarfile.open(targz_file, "r:gz")
+    #tar.extractall(path = '%s/%s/'%(dataloc, filename[:-7]))
+    #tar.close()
     
     if remove: removeTarGz(targz_file)
 
@@ -72,7 +74,7 @@ def removeTarGz(targz_file):
     
     assert targz_file.endswith('_MOS.tar.gz') or targz_file.endswith('_MOS_F02DAR.tar.gz'), "removeTarGz function should only be used to delete ALOS-1/ALOS2 .tar.gz files"
     
-    os.remove(targx_file)
+    os.remove(targz_file)
     
 
 def main(lat, lon, year, output_dir = os.getcwd(), remove = False):
@@ -87,7 +89,7 @@ def main(lat, lon, year, output_dir = os.getcwd(), remove = False):
     filename = download(url, output_dir = output_dir)
     
     # Decompress downloaded file, and delete original if remove == True
-    decompress(url.split('/')[-1], remove = remove)
+    decompress(filename, remove = remove)
 
     
 def getYears(years):
