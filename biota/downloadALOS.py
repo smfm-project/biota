@@ -90,22 +90,32 @@ def main(lat, lon, year, output_dir = os.getcwd(), remove = False):
     decompress(url.split('/')[-1], remove = remove)
 
     
-    
 def getYears(years):
     """
     Reduces input years to those available for the ALOS mosaic (or may be available in future).
     """
     
-    # Remove years before ALOS-1
-    years = [y for y in years if y >= 2007]
+    years_cleansed = []
     
-    # Remove years between ALOS-1 and ALOS-2
-    years = [y for y in years if y <= 2010 or y >= 2015]
-    
-    # Remove years from the future, which can't possibly exist yet.
-    years = [y for y in years if y <= datetime.datetime.now().year]
-    
-    return sorted(years)
+    for y in years:
+        
+        # Remove years before ALOS-1
+        if y < 2007:   
+            print 'WARNING: Not downloading data for %s; no data from ALOS are available before 2007'%str(y)
+            
+        # Remove years between ALOS-1 and ALOS-2
+        elif y > 2010 and y < 2015:
+            print 'WARNING: Not downloading data for %s; no data from ALOS are available 2011 to 2014 inclusive.'%str(y)
+        
+        # Remove years from the future, which can't possibly exist yet.
+        elif y > datetime.datetime.now().year:
+            print 'WARNING: Not downloading data for %s; this year is in the future.'%str(y)
+        
+        # We will attempt to download all remaining years
+        else:
+            years_cleansed.append(y)
+        
+    return sorted(years_cleansed)
 
 
 if __name__ == '__main__':
