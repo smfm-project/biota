@@ -7,8 +7,6 @@ import os
 import subprocess
 import tarfile
 
-import pdb
-
 """
 This is a simple script to assist in the downloading of data from the ALOS mosaic product.
 """
@@ -29,7 +27,7 @@ def generateURL(lat, lon, year):
     hem_EW = 'W' if lon < 0 else 'E'
     
     # Filename patterns are different for ALOS-1/ALOS-2
-    if year < 2010:
+    if year <= 2010:
         url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS/ext1/PALSAR_MSC/25m_MSC/%s/%s%s%s%s_%s_MOS.tar.gz'
     else:
         url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s%s%s%s_%s_MOS_F02DAR.tar.gz'
@@ -46,7 +44,7 @@ def download(url, output_dir = os.getcwd()):
     
     subprocess.call(['wget', url, '-P', output_dir])
     
-    return command.split('/')[-1]
+    return url.split('/')[-1]
 
 
 def decompress(filename, dataloc = os.getcwd(), remove = False):
@@ -93,19 +91,11 @@ def main(lat, lon, year, output_dir = os.getcwd(), remove = False):
 
     
     
-def getYears(inputString):
+def getYears(years):
     """
-    Function to separate argparse inputs, where two values may be separated  by :.
     Reduces input years to those available for the ALOS mosaic (or may be available in future).
     """
     
-    if ':' in inputString:
-        years = inputString.split(':')
-        assert len(years) == 2, "Input ranges for year should be specified in the format <min>:<max>."
-        years = range(int(years[0]), int(years[1]) + 1, 1)
-    else:
-        years = [int(inputString), int(inputString) + 1]
-      
     # Remove years before ALOS-1
     years = [y for y in years if y >= 2007]
     
@@ -115,22 +105,7 @@ def getYears(inputString):
     # Remove years from the future, which can't possibly exist yet.
     years = [y for y in years if y <= datetime.datetime.now().year]
     
-    return years
-
-
-
-def getDegrees(degrees):
-    """
-    ALOS mosaic tiles are distributed in 5x5 degree tiles. Any latitude or longitude not divisible by 5 should be removed.
-    """
-    
-    degrees = range(degrees[0], degrees[1] + 1, 1)
-    
-    degrees = [d for d in degrees if d % 5 == 0]
-    
-    return degrees
-
-
+    return sorted(years)
 
 
 if __name__ == '__main__':
@@ -141,17 +116,17 @@ if __name__ == '__main__':
     # Required arguments
     parser.add_argument('-lat', '--latitude', type = int, help = "Latitude of tile lower-left corner. Must be a multiple of 5 degrees.")
     parser.add_argument('-lon', '--longitude', type = int, help = "Longitude of tile lower-left corner. Must be a multiple of 5 degrees.")
-
+    
     # Optional arguments
-    parser.add_argument('-y', '--year', type = str, default = '2007:%s'%str(datetime.datetime.now().year), help = "Year of data to download. Defaults to downloading all data.")
+    parser.add_argument('-y', '--years', type = int, nargs = '+', default = [2007,2010,2016], help = "Year of data to download. Defaults to downloading all data.")
     parser.add_argument('-o', '--output_dir', type = str, default = os.getcwd(), help = "Optionally specify an output directory. Defaults to the present working directory.")
     parser.add_argument('-r', '--remove', action='store_true', default = False, help = "Optionally remove downloaded .zip files after decompression.")
 
     # Get arguments from command line
     args = parser.parse_args()
     
-    # Extract ranges of year
-    years = getYears(args.year)
+    # Cleanse input years
+    years = getYears(args.years)
     
     # Run through entire processing sequence
     for year in years:
