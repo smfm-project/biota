@@ -132,7 +132,7 @@ if __name__ == '__main__':
     # Optional arguments
     parser.add_argument('-y', '--years', type = int, nargs = '+', default = [2007,2010,2016], help = "Year of data to download. Defaults to downloading all data.")
     parser.add_argument('-o', '--output_dir', type = str, default = os.getcwd(), help = "Optionally specify an output directory. Defaults to the present working directory.")
-    parser.add_argument('-r', '--remove', action='store_true', default = False, help = "Optionally remove downloaded .zip files after decompression.")
+    parser.add_argument('-r', '--remove', action='store_true', default = False, help = "Optionally remove downloaded .tar.gz files after decompression.")
 
     # Get arguments from command line
     args = parser.parse_args()
