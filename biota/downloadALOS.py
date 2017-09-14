@@ -44,7 +44,10 @@ def download(url, output_dir = os.getcwd()):
     
     subprocess.call(['wget', url, '-P', output_dir])
     
-    return url.split('/')[-1]
+    # Determine absolute path of downloaded file
+    filepath = '%s/%s'%(output_dir.rstrip('/'), url.split('/')[-1])
+    
+    return filepath
 
 
 def decompress(filename, dataloc = os.getcwd(), remove = False):
@@ -86,10 +89,10 @@ def main(lat, lon, year, output_dir = os.getcwd(), remove = False):
     url = generateURL(lat, lon, year)
     
     # Get file, sending it to output_dir
-    filename = download(url, output_dir = output_dir)
+    filepath = download(url, output_dir = output_dir)
     
     # Decompress downloaded file, and delete original if remove == True
-    decompress(filename, remove = remove)
+    decompress(filepath, remove = remove)
 
     
 def getYears(years):
