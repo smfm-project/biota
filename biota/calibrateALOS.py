@@ -163,8 +163,8 @@ output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/kilwa/'
 t1 = 2007
 t2 = 2008
 
-lat = -7#-11
-lon = 38
+lat = -8#-11
+lon = 39
 
 HVfile_t1, maskfile_t1 = generateFilenames(lat, lon, t1, data_dir)
 HVfile_t2, maskfile_t2 = generateFilenames(lat, lon, t2, data_dir)

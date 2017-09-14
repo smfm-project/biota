@@ -60,7 +60,7 @@ def decompress(targz_file, remove = False):
     print 'Extracting %s'%targz_file
     
     tar = tarfile.open(targz_file, "r:gz")
-    tar.extractall(path = '%s/%s/'%(dataloc, filename[:-7]))
+    tar.extractall(path = targz_file[:-7])
     tar.close()
     
     if remove: removeTarGz(targz_file)
