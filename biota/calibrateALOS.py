@@ -151,7 +151,7 @@ def overviewFigure(AGB_t1, AGB_t2, t1, t2, lat, lon, output_dir = os.getcwd()):
     hem_NS = 'S' if lat < 0 else 'N'
     hem_EW = 'W' if lon < 0 else 'E'
     
-    filename = '/overview_%s%s.png'%(hem_NS + str(abs(lat)), hem_EW + str(abs(lon)))
+    filename = '/overview_%s%s.png'%(hem_NS + str(abs(lat)).zfill(2), hem_EW + str(abs(lon)).zfill(3))
     
     plt.savefig(output_dir + filename, dpi = 150)
     plt.close()
@@ -161,9 +161,9 @@ data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/kilwa/'
 output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/kilwa/'
 
 t1 = 2007
-t2 = 2016
+t2 = 2008
 
-lat = -11
+lat = -7#-11
 lon = 38
 
 HVfile_t1, maskfile_t1 = generateFilenames(lat, lon, t1, data_dir)
