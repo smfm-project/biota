@@ -42,7 +42,7 @@ def download(url, output_dir = os.getcwd()):
     Download data from JAXA FTP server
     """
     
-    subprocess.call(['wget', url, '-P', output_dir])
+    subprocess.call(['wget', '-nc', url, '-P', output_dir])
     
     # Determine absolute path of downloaded file
     filepath = '%s/%s'%(output_dir.rstrip('/'), url.split('/')[-1])
@@ -50,13 +50,10 @@ def download(url, output_dir = os.getcwd()):
     return filepath
 
 
-def decompress(filename, dataloc = os.getcwd(), remove = False):
+def decompress(targz_file, remove = False):
     '''
     Unzips .tar.gz ALOS mosaic files downloaded from JAXA, and removes original where requested.
     '''
-    
-    # Get a list of zip files matching the Level 1C file pattern
-    targz_file = '%s/%s'%(dataloc, filename)
     
     assert targz_file.endswith("tar.gz"), "File name must end with .tar.gz to be decompressed."
     
