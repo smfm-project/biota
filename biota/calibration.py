@@ -2,6 +2,8 @@
 
 import argparse
 import datetime as dt
+import itertools
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -46,11 +48,19 @@ class ALOS(object):
         self.hem_NS = 'S' if lat < 0 else 'N'
         self.hem_EW = 'W' if lon < 0 else 'E'
         
+        # Determine whether ALOS-1 or ALOS-2
+        self.satellite = self.__getSatellite()
+        
         # Determine filenames
         self.dataloc = dataloc.rstrip('/')
         self.directory = self.__getDirectory()
         self.HV_path = self.__getHVPath()
         self.mask_path = self.__getMaskPath()
+        self.date_path = self.__getDatePath()
+
+        # Stop of the ALOS tile doesn't exist
+        if not os.path.isfile(self.HV_path): 
+            raise IOError
         
         # Get GDAL geotransform
         self.geo_t = self.__getGeoT(self.HV_path)
@@ -58,9 +68,23 @@ class ALOS(object):
         # Get Raster size
         self.xSize, self.ySize = self.__getSize(self.HV_path)
         
-        # Load DN and mask
+        # Load DN, mask, and day of year
         self.mask = self.getMask()
         self.DN = self.getDN()
+        #self.DOY = self.getDOY()
+
+    def __getSatellite(self):
+        """
+        Return the sensor for the ALOS mosaic tile
+        """
+        
+        if self.year >= 2015:
+            satellite = 'ALOS-2'
+        else:
+            satellite = 'ALOS-1'
+        
+        return satellite
+    
 
     def __getDirectory(self):
         """
@@ -75,7 +99,7 @@ class ALOS(object):
         name_pattern = '%s%s_%s_%s'
         
         # Directory name patterns name patterns are different for ALOS-1/ALOS-2
-        if self.year >= 2015:
+        if self.satellite == 'ALOS-2':
             name_pattern += '_F02DAR'
         
         # Generate directory name
@@ -96,7 +120,7 @@ class ALOS(object):
         name_pattern = '%s%s_%s_%s'
         
         # Directory name patterns name patterns are different for ALOS-1/ALOS-2
-        if self.year >= 2015:
+        if self.satellite == 'ALOS-2':
             name_pattern += '_F02DAR'
 
         # Generate file name
@@ -116,6 +140,13 @@ class ALOS(object):
         """
         
         return self.__getDirectory() + self.__getFilename('mask')
+    
+    def __getDatePath(self):
+        """
+        Determines the filepath to DOY data.
+        """
+        
+        return self.__getDirectory() + self.__getFilename('date')
     
     def __getGeoT(self, filepath):
         """
@@ -147,6 +178,34 @@ class ALOS(object):
         mask = mask_ds.ReadAsArray()
         
         return mask != 255
+    
+    def getDOY(self):
+        """
+        Loads date values into a numpy array.
+        """
+        
+        date_ds = gdal.Open(self.date_path, 0)
+        day_after_launch = date_ds.ReadAsArray()
+        
+        # Get list of unique dates in ALOS tile
+        unique_days = np.unique(day_after_launch)
+        
+        if self.satellite == 'ALOS-2':
+            launch_date = dt.datetime(2014,5,24)
+        else:
+            launch_date =  dt.datetime(2006,1,24)
+        
+        # Determine the Day of Year associated with each
+        unique_dates = [launch_date  + dt.timedelta(days=int(d)) for d in unique_days]
+        unique_doys = [(d - dt.datetime(d.year,1,1,0,0)).days + 1 for d in unique_dates]
+        
+        # Build a Day Of Year array
+        DOY = np.zeros_like(day_after_launch)
+        for day, doy in zip(unique_days, unique_doys):
+            DOY[day_after_launch == day] = doy
+                
+        return DOY
+        
     
     def getDN(self):
         """
@@ -362,7 +421,7 @@ def _world2Pixel(geo_t, x, y, buffer_size = 0):
     return (pixel, line)
 
 
-def rasterizeShapefile(data, shp, buffer_size = 0.):
+def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
     """
     Rasterize points, lines or polygons from a shapefile to match ALOS mosaic data.
         
@@ -379,7 +438,7 @@ def rasterizeShapefile(data, shp, buffer_size = 0.):
     buffer_px = int(round(buffer_size / data.geo_t[1]))
     
     # Create output image. Add an buffer around the image array equal to the maxiumum dilation size. This means that features just outside ALOS tile extent can contribute to dilated mask.
-    rasterPoly = Image.new("L", (data.ySize + (buffer_px * 2), data.xSize + (buffer_px * 2)), 1)
+    rasterPoly = Image.new("I", (data.ySize + (buffer_px * 2), data.xSize + (buffer_px * 2)), 0)
     rasterize = ImageDraw.Draw(rasterPoly)
     
     # The shapefile may not have the same CRS as ALOS mosaic data, so this will generate a function to reproject points.
@@ -389,10 +448,18 @@ def rasterizeShapefile(data, shp, buffer_size = 0.):
     sf = shapefile.Reader(shp) 
     
     # For each shape in shapefile...
-    for shape in sf.iterShapes():
+    for n,shape in enumerate(sf.iterShapes()):
+        
+        # If shape number not requried
+        if binary_mask:
+            n = 1
         
         # Get shape bounding box
         sxmin, symin, sxmax, symax = shape.bbox
+        
+        # Transform bounding box points
+        sxmin, symin, z = coordTransform.TransformPoint(sxmin, symin)
+        sxmax, symax, z = coordTransform.TransformPoint(sxmax, symax)
         
         # Go to the next record if out of bounds
         if sxmax < data.geo_t[0] - buffer_size: continue
@@ -425,22 +492,19 @@ def rasterizeShapefile(data, shp, buffer_size = 0.):
             # Draw the mask for this shape...
             # if a point...
             if shape.shapeType == 0:
-                rasterize.point(pixels, 0)
+                rasterize.point(pixels, n)
 
             # a line...
             elif shape.shapeType == 3:
-                rasterize.line(pixels, 0)
+                rasterize.line(pixels, n)
   
             # or a polygon.
             elif shape.shapeType == 5:  
-                rasterize.polygon(pixels, 0)
-
-    #Converts a Python Imaging Library array to a gdalnumeric image.
-    mask = gdalnumeric.fromstring(rasterPoly.tobytes(),'b')
-    mask.shape = rasterPoly.im.size[1], rasterPoly.im.size[0]
+                rasterize.polygon(pixels, n)
     
-    #Invert mask (so that output is True inside shapefile, False outside shapefile)
-    mask = mask == False
+    #Converts a Python Imaging Library array to a gdalnumeric image.
+    mask = gdalnumeric.fromstring(rasterPoly.tobytes(),dtype=np.uint32)
+    mask.shape = rasterPoly.im.size[1], rasterPoly.im.size[0]
     
     # If any buffer pixels are slected, dilate the masked area by buffer_px pixels
     if buffer_px > 0:
@@ -450,6 +514,47 @@ def rasterizeShapefile(data, shp, buffer_size = 0.):
     mask = mask[buffer_px:mask.shape[0]-buffer_px, buffer_px:mask.shape[1]-buffer_px]
     
     return mask
+
+
+
+
+def getTilesInShapefile(shp):
+    """
+    Identify all the ALOS tiles that fall within a shapefile.
+    
+    Args:
+        shp: Path to a shapefile consisting of polygons. This can be in any projection.
+    
+    Returns:
+        The lat/lon indicators of which ALOS tiles are covered by the shapefile
+    """
+    
+    # The shapefile may not have the same CRS as ALOS mosaic data, so this will generate a function to reproject points.    
+    coordTransform = _coordinateTransformer(shp)
+    
+    lats, lons = [], []
+    tiles_to_include = set([])
+        
+    for shape in shapefile.Reader(shp).shapes():
+        
+        # Get the bbox for each shape in the shapefile
+        lonmin, latmin, lonmax, latmax = shape.bbox
+        
+        # Transform points to WGS84
+        lonmin, latmin, z = coordTransform.TransformPoint(lonmin, latmin)
+        lonmax, latmax, z = coordTransform.TransformPoint(lonmax, latmax)
+        
+        # Get the tiles that cover the area of the shapefile
+        latrange = range(int(math.ceil(latmin)), int(math.ceil(latmax)+1), 1)
+        lonrange = range(int(math.floor(lonmin)), int(math.floor(lonmax)+1), 1)
+        tiles = list(itertools.product(latrange,lonrange))
+        
+        # Add them to tiles_to_include if not already tere
+        [tiles_to_include.add(t) for t in tiles]
+    
+    return sorted(list(tiles_to_include))
+    
+
 
 
 
@@ -466,7 +571,6 @@ if __name__ == '__main__':
     
     data_t1 = ALOS(lat, lon, t1, data_dir)
     data_t2 = ALOS(lat, lon, t2, data_dir)
-    
     
     # Build masks (optionally with buffers)
     lakes = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_wat/MOZ_water_areas_dcw.shp'
@@ -488,74 +592,6 @@ if __name__ == '__main__':
 
 
 """
-# Fitting Gamma functions (this assumes protected areas are stable + representative), and that 0.01 bins acceptable
-
-import scipy.stats as stats
-
-bins = np.arange(0,0.11,0.01)
-shapes = []
-scales = []
-
-for b in bins:
-    s = np.logical_and(np.logical_and(gamma0_t1>b,gamma0_t1<(b+0.01)), wdpa_mask==True)
-    gamma0_s = gamma0_t2[s]
-    shape, loc, scale = stats.rv_continuous.fit(stats.gamma, gamma0_s[::10], floc=0)
-    shapes.append(shape)
-    scales.append(scale)
-
-shapes = np.array(shapes)
-scales = np.array(scales)
-gamma0_bins = np.array(bins+0.005)
-
-# Fit linear model to associate scale with gamma0
-poly_scale = np.polyfit(gamma0_bins, scales, 1)
-f_scale = np.poly1d(poly_scale)
-
-# Fit third order polynomial to associate shape with gamma0
-poly_shape = np.polyfit(gamma0_bins, shapes, 3)
-f_shape = np.poly1d(poly_shape)
-
-
-
-gammarange = np.arange(3,5,0.000025).reshape(80000,1).repeat(10000,1)
-
-gamma0_rand = np.random.gamma(f_shape(gammarange),f_scale(gammarange))
-
-# Generating random differences from gamma functions
-
-gamma0_change_rand = np.random.gamma(f_shape(gamma0_t2), f_scale(gamma0_t2)) - np.random.gamma(f_shape(gamma0_t1), f_scale(gamma0_t1))
-
-
-#import time
-#starttime = time.time()
-#gammarange = np.arange(3,5,0.000025).reshape(80000,1).repeat(10000,1)
-#gamma0_rand = np.random.gamma(f_shape(gammarange),f_scale(gammarange))
-#endtime = time.time() - starttime
-
-
-
-# Plot range of gamma functions
-x = np.arange(0,0.1,0.001) 
-
-for i in range(11):
-    rv = stats.gamma(shapes[i],0,scales[i])
-    plt.plot(x, rv.pdf(x), lw=2, color='b')
-plt.show()
-
-m = []
-for i in range(11):
-    m.append(np.random.gamma(shapes[i],scale=scales[i],size=(100000)))
-
-# An extreme event
-change = m[0] - m[6]
-
-p_def = np.sum(change<-0.05)/100000.
-p_deg = np.sum(np.logical_and(change>=-0.05, change<-0.02))/100000.
-p_minorloss = np.sum(np.logical_and(change>=-0.02, change<0.))/100000.
-p_minorgain = np.sum(np.logical_and(change>=0, change<0.02))/100000.
-p_majorgain = np.sum(change>=0.02)/100000.
-
-print p_def, p_deg, p_minorloss, p_minorgain, p_majorgain
 
 
 
