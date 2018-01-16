@@ -1,7 +1,6 @@
 # Toolset to calibrate change attribution algorithm
 
 import math
-import matplotlib.pyplot as plt
 import numpy as np
 import biota.calibration as cal
 import scipy.stats as stats
