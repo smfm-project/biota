@@ -4,10 +4,8 @@ import argparse
 import datetime as dt
 import itertools
 import math
-import matplotlib.pyplot as plt
 import numpy as np
 import os
-from osgeo import gdal, gdalnumeric, osr, ogr
 from PIL import Image, ImageDraw
 from scipy import ndimage
 import scipy.stats as stats
@@ -250,6 +248,8 @@ def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vm
     Builds a standardised map for overviewFigure().
     """
     
+    import matplotlib.pyplot as plt
+        
     im = ax.imshow(data, vmin = vmin, vmax = vmax, cmap = cmap, interpolation = 'nearest')
     
     ax.set_xticks(np.arange(0,4501,450))
@@ -276,6 +276,8 @@ def overviewFigure(data_t1, data_t2, output_dir = os.getcwd(), output_name = 'ov
         data_t2: 
         output_name: Optionally specify an output string to precede output file. Defaults to 'overview'.
     """
+    
+    import matplotlib.pyplot as plt
     
     assert data_t1.geo_t == data_t2.geo_t, "The two ALOS tiles must be from the same location."
     
@@ -336,6 +338,8 @@ def outputGeoTiff(data, geo_t, output_dir, output_name = 'output'):
         output_dir: Directory to write output file.
         output_name: Optionally specify an output string to precede output file. Defaults to 'output'.
     """
+    
+    from osgeo import osr, gdal
     
     lon, lat = geo_t[0], geo_t[3]
     
