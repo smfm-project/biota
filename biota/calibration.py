@@ -216,18 +216,23 @@ class ALOS(object):
         DN = DN_ds.ReadAsArray()
         
         return DN
+    
         
-    def getGamma0(self):
+    def getGamma0(self, units = 'natural'):
         """
-        Calibrates data to gamma0 (baskscatter) in natural units.
+        Calibrates data to gamma0 (baskscatter) in decibels or natural units.
         """
+        
+        assert units == 'natural' or units == 'decibels', "Units must be 'natural' or 'decibels'. You input %s."%units
         
         DN = np.ma.array(self.DN, mask = np.logical_or(self.mask, self.DN == 0))
         
         gamma0 = 10 * np.ma.log10(DN.astype(np.float) ** 2) - 83. # units = decibels
-        gamma0 = 10 ** (gamma0 / 10.) # Convert to natural units
         
-        return gamma0
+        if units == 'decibels':
+            return gamma0
+        elif units == 'natural':
+            return 10 ** (gamma0 / 10.) # Convert to natural units
         
     def getAGB(self):
         """
