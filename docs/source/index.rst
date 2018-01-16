@@ -6,7 +6,16 @@
 Welcome to biota's documentation!
 =================================
 
+Introduction
+------------
+
+This documentation will show:
+
+* How to generate a biomass map using the ALOS mosaic product
+* A method for generating a biomass change map (deforestation and degradation)
+
 Contents:
+---------
 
 .. toctree::
    :maxdepth: 2
