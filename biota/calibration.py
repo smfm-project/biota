@@ -9,7 +9,6 @@ import os
 from PIL import Image, ImageDraw
 from scipy import ndimage
 import scipy.stats as stats
-import shapefile
 import pdb
 
 
@@ -388,6 +387,8 @@ def _coordinateTransformer(shp):
         A function that transforms shapefile points to EPSG.
     """
     
+    from osgeo import ogr, osr
+        
     driver = ogr.GetDriverByName('ESRI Shapefile')
     ds = driver.Open(shp)
     layer = ds.GetLayer()
@@ -442,6 +443,8 @@ def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
     Returns:
         A numpy array with a boolean mask delineating locations inside (True) and outside (False) the shapefile [and optional buffer].
     """
+    
+    import shapefile
     
     # Determine size of buffer to place around lines/polygons
     buffer_px = int(round(buffer_size / data.geo_t[1]))
@@ -537,6 +540,8 @@ def getTilesInShapefile(shp):
     Returns:
         The lat/lon indicators of which ALOS tiles are covered by the shapefile
     """
+    
+    import shapefile
     
     # The shapefile may not have the same CRS as ALOS mosaic data, so this will generate a function to reproject points.    
     coordTransform = _coordinateTransformer(shp)
