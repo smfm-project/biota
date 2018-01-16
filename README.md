@@ -4,26 +4,22 @@ This README would normally document whatever steps are necessary to get your app
 
 ### What is this repository for? ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+This repository contains tools to download, calibrate, and generate change statistics from JAXA's [ALOS mosaic](http://www.eorc.jaxa.jp/ALOS/en/palsar_fnf/fnf_index.htm) product for forest monitoring purposes.
+
+This repository includes command line tools for the following tasks:
+
+* Downloading ALOS-1 and ALOS-2 data from JAXA.
+* that...
+* ...and the other
 
 ### How do I get set up? ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+These tools are written in Python for use in Linux. All libraries used are available within Anaconda Python.
 
-### Contribution guidelines ###
+### How does it work? ###
 
-* Writing tests
-* Code review
-* Other guidelines
+Full documentation is hosted at: http://biota.readthedocs.io/.
 
 ### Who do I talk to? ###
 
-* Repo owner or admin
-* Other community or team contact
+Written and maintained by Samuel Bowers (sam.bowers@ed.ac.uk).
