@@ -29,10 +29,10 @@ biota.download module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: biota
-    :members:
-    :undoc-members:
-    :show-inheritance:
+#Module contents
+#---------------
+#
+#.. automodule:: biota
+#    :members:
+#    :undoc-members:
+#    :show-inheritance:

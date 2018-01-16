@@ -19,7 +19,9 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
-
+    
+   setup.rst
+   biota.rst
 
 
 Indices and tables
