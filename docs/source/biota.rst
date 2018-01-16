@@ -15,7 +15,7 @@ biota.calibration module
 biota.change2 module
 --------------------
 
-.. automodule:: biota.change2
+.. automodule:: biota.change
     :members:
     :undoc-members:
     :show-inheritance:
