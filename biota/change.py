@@ -199,100 +199,104 @@ def rebin(a, shape = (450, 450)):
 
 
 
-data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
-output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
+if __name__ == '__main__':
+    '''
+    '''
 
-#Nhambita = lat -18 lon 33
+    data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
+    output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
 
-lat = -19
-lon = 33#34#39
-    
-data_2007 = cal.ALOS(lat, lon, 2007, data_dir)
-#data_2008 = cal.ALOS(lat, lon, 2008, data_dir)
-#data_2009 = cal.ALOS(lat, lon, 2009, data_dir)
-data_2010 = cal.ALOS(lat, lon, 2010, data_dir)
+    #Nhambita = lat -18 lon 33
 
-gamma0_2007 = data_2007.getGamma0(units='decibels')
-#gamma0_2008 = data_2008.getGamma0()
-#gamma0_2009 = data_2009.getGamma0()
-gamma0_2010 = data_2010.getGamma0(units='decibels')
-
-
-gamma0_2007 = enhanced_lee_filter(gamma0_2007, window_size = 3, n_looks = 16)
-gamma0_2010 = enhanced_lee_filter(gamma0_2010, window_size = 3, n_looks = 16)
-#gamma0_2007 = enhanced_lee_filter(rebin(gamma0_2007), window_size = 5, n_looks = 16*4)
-#gamma0_2010 = enhanced_lee_filter(rebin(gamma0_2010), window_size = 5, n_looks = 16*4)
-
-
-AGB_2007 = 715.667 * (10 ** (gamma0_2007 / 10.)) - 5.967
-AGB_2010 = 715.667 * (10 ** (gamma0_2010 / 10.)) - 5.967
-
-#AGB_2007 = data_2007.getAGB()
-#AGB_2010 = data_2010.getAGB()
-
-#AGB_2008 = lee_filter(data_2008.getAGB(), 10)
-#AGB_2009 = lee_filter(data_2009.getAGB(), 10)
-#AGB_2010 = lee_enhanced_filter(data_2010.getAGB())
-
-#change_07_08 = getChange(AGB_2007, AGB_2008)
-#change_08_09 = getChange(AGB_2008, AGB_2009)
-#change_09_10 = getChange(AGB_2009, AGB_2010)
-change_07_10 = getChange(AGB_2007, AGB_2010, F_threshold = 10., C_threshold = 0.2)
-
-contiguous_change_area = getContiguousAreas(change_07_10['degradation'] + change_07_10['deforestation'], 1, 8)
-
-deforestation = change_07_10['deforestation'] * contiguous_change_area
-degradation = change_07_10['degradation'] * contiguous_change_area
-
-
-
-#deforestation_07_08 = getContiguousAreas(change_07_08['deforestation'], 1, 8)
-#deforestation_08_09 = getContiguousAreas(change_08_09['deforestation'], 1, 8)
-#deforestation_09_10 = getContiguousAreas(change_09_10['deforestation'], 1, 8)
-
-#deforestation = deforestation_07_10.sum() / (4500 * 4500.)
-#total_deforestation = (deforestation_07_08.sum() + deforestation_08_09.sum() + deforestation_09_10.sum()) / (4500. * 4500)
-
-
-# This result looks nice. TODO: calculate % change of entire contiguous change region
-
-from osgeo import osr, gdal
-srs = osr.SpatialReference()
-srs.ImportFromEPSG(4326)
-
-driver = gdal.GetDriverByName('GTiff')
-ds = driver.Create(output_dir + 'forest_loss.tif', 4500, 4500, 1, gdal.GDT_UInt16)
-ds.SetGeoTransform(data_2007.geo_t)
-ds.SetProjection(srs.ExportToWkt())
-ds.GetRasterBand(1).WriteArray(deforestation*2 + degradation)
-ds = None
-
-
-"""
-geo_t = (33.0, 0.00022222222222222223*10, 0.0, -18.0, 0.0, -0.00022222222222222223*10)
-driver = gdal.GetDriverByName('GTiff')
-ds = driver.Create(output_dir + 'forest_loss.tif', 450, 450, 1, gdal.GDT_UInt16)
-ds.SetGeoTransform(geo_t)
-ds.SetProjection(srs.ExportToWkt())
-ds.GetRasterBand(1).WriteArray(deforestation*2 + degradation)
-ds = None
-"""
-"""
-
-contiguous_change_area_gain = getContiguousAreas(change_07_10['aforestation'] + change_07_10['growth'], 1, 8)
-
-aforestation = change_07_10['aforestation'] * contiguous_change_area_gain
-growth = change_07_10['growth'] * contiguous_change_area_gain
-
-# A deforestation rate from differencing?
-
-out = np.zeros((450,450))
-for x in range(450):
-    for y in range(450):
-        out[y,x] = aforestation[y*10:(y*10)+10,x*10:(x*10)+10].data.sum() - deforestation[y*10:(y*10)+10,x*10:(x*10)+10].data.sum()
+    lat = -19
+    lon = 33#34#39
         
+    data_2007 = cal.ALOS(lat, lon, 2007, data_dir)
+    #data_2008 = cal.ALOS(lat, lon, 2008, data_dir)
+    #data_2009 = cal.ALOS(lat, lon, 2009, data_dir)
+    data_2010 = cal.ALOS(lat, lon, 2010, data_dir)
 
-print "Deforestation rate: %s"%str(np.sum(out[out<0])/(4500*4500.))
-print "Aforestation rate: %s"%str(np.sum(out[out>0])/(4500*4500.))
+    gamma0_2007 = data_2007.getGamma0(units='decibels')
+    #gamma0_2008 = data_2008.getGamma0()
+    #gamma0_2009 = data_2009.getGamma0()
+    gamma0_2010 = data_2010.getGamma0(units='decibels')
 
-"""
+
+    gamma0_2007 = enhanced_lee_filter(gamma0_2007, window_size = 3, n_looks = 16)
+    gamma0_2010 = enhanced_lee_filter(gamma0_2010, window_size = 3, n_looks = 16)
+    #gamma0_2007 = enhanced_lee_filter(rebin(gamma0_2007), window_size = 5, n_looks = 16*4)
+    #gamma0_2010 = enhanced_lee_filter(rebin(gamma0_2010), window_size = 5, n_looks = 16*4)
+
+
+    AGB_2007 = 715.667 * (10 ** (gamma0_2007 / 10.)) - 5.967
+    AGB_2010 = 715.667 * (10 ** (gamma0_2010 / 10.)) - 5.967
+
+    #AGB_2007 = data_2007.getAGB()
+    #AGB_2010 = data_2010.getAGB()
+
+    #AGB_2008 = lee_filter(data_2008.getAGB(), 10)
+    #AGB_2009 = lee_filter(data_2009.getAGB(), 10)
+    #AGB_2010 = lee_enhanced_filter(data_2010.getAGB())
+
+    #change_07_08 = getChange(AGB_2007, AGB_2008)
+    #change_08_09 = getChange(AGB_2008, AGB_2009)
+    #change_09_10 = getChange(AGB_2009, AGB_2010)
+    change_07_10 = getChange(AGB_2007, AGB_2010, F_threshold = 10., C_threshold = 0.2)
+
+    contiguous_change_area = getContiguousAreas(change_07_10['degradation'] + change_07_10['deforestation'], 1, 8)
+
+    deforestation = change_07_10['deforestation'] * contiguous_change_area
+    degradation = change_07_10['degradation'] * contiguous_change_area
+
+
+
+    #deforestation_07_08 = getContiguousAreas(change_07_08['deforestation'], 1, 8)
+    #deforestation_08_09 = getContiguousAreas(change_08_09['deforestation'], 1, 8)
+    #deforestation_09_10 = getContiguousAreas(change_09_10['deforestation'], 1, 8)
+
+    #deforestation = deforestation_07_10.sum() / (4500 * 4500.)
+    #total_deforestation = (deforestation_07_08.sum() + deforestation_08_09.sum() + deforestation_09_10.sum()) / (4500. * 4500)
+
+
+    # This result looks nice. TODO: calculate % change of entire contiguous change region
+
+    from osgeo import osr, gdal
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(4326)
+
+    driver = gdal.GetDriverByName('GTiff')
+    ds = driver.Create(output_dir + 'forest_loss.tif', 4500, 4500, 1, gdal.GDT_UInt16)
+    ds.SetGeoTransform(data_2007.geo_t)
+    ds.SetProjection(srs.ExportToWkt())
+    ds.GetRasterBand(1).WriteArray(deforestation*2 + degradation)
+    ds = None
+
+
+    """
+    geo_t = (33.0, 0.00022222222222222223*10, 0.0, -18.0, 0.0, -0.00022222222222222223*10)
+    driver = gdal.GetDriverByName('GTiff')
+    ds = driver.Create(output_dir + 'forest_loss.tif', 450, 450, 1, gdal.GDT_UInt16)
+    ds.SetGeoTransform(geo_t)
+    ds.SetProjection(srs.ExportToWkt())
+    ds.GetRasterBand(1).WriteArray(deforestation*2 + degradation)
+    ds = None
+    """
+    """
+
+    contiguous_change_area_gain = getContiguousAreas(change_07_10['aforestation'] + change_07_10['growth'], 1, 8)
+
+    aforestation = change_07_10['aforestation'] * contiguous_change_area_gain
+    growth = change_07_10['growth'] * contiguous_change_area_gain
+
+    # A deforestation rate from differencing?
+
+    out = np.zeros((450,450))
+    for x in range(450):
+        for y in range(450):
+            out[y,x] = aforestation[y*10:(y*10)+10,x*10:(x*10)+10].data.sum() - deforestation[y*10:(y*10)+10,x*10:(x*10)+10].data.sum()
+            
+
+    print "Deforestation rate: %s"%str(np.sum(out[out<0])/(4500*4500.))
+    print "Aforestation rate: %s"%str(np.sum(out[out>0])/(4500*4500.))
+
+    """
