@@ -23,12 +23,12 @@ class ALOS(object):
         DN: An array of uncalibrated digital numbers from the ALOS tile.
         mask:
     """
-
+    
     def __init__(self, lat, lon, year, dataloc):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
-        
+                
         # Test that inputs are of reasonable lats/lons/years
         assert type(lat) == int, "Latitude must be an integer."
         assert lat < 90. or lat > -90., "Latitude must be between -90 and 90 degrees."
@@ -150,6 +150,8 @@ class ALOS(object):
         Fetches a GDAL GeoTransform for tile.
         """
         
+        from osgeo import gdal
+                
         ds = gdal.Open(filepath, 0)
         geo_t = ds.GetGeoTransform()
                
@@ -160,6 +162,8 @@ class ALOS(object):
         Determines the size of a tile.
         """
         
+        from osgeo import gdal
+   
         ds = gdal.Open(filepath, 0)
         x_size = ds.RasterXSize
         y_size = ds.RasterYSize
@@ -171,6 +175,8 @@ class ALOS(object):
         Loads the mask into a numpy array.
         """
         
+        from osgeo import gdal
+        
         mask_ds = gdal.Open(self.mask_path, 0)
         mask = mask_ds.ReadAsArray()
         
@@ -180,6 +186,8 @@ class ALOS(object):
         """
         Loads date values into a numpy array.
         """
+        
+        from osgeo import gdal
         
         date_ds = gdal.Open(self.date_path, 0)
         day_after_launch = date_ds.ReadAsArray()
@@ -208,6 +216,8 @@ class ALOS(object):
         """
         Loads DN (raw) values into a numpy array.
         """
+        
+        from osgeo import gdal
         
         DN_ds = gdal.Open(self.HV_path, 0)
         DN = DN_ds.ReadAsArray()
@@ -445,11 +455,12 @@ def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
     """
     
     import shapefile
+    from osgeo import gdalnumeric
     
     # Determine size of buffer to place around lines/polygons
     buffer_px = int(round(buffer_size / data.geo_t[1]))
     
-    # Create output image. Add an buffer around the image array equal to the maxiumum dilation size. This means that features just outside ALOS tile extent can contribute to dilated mask.
+    # Create output image. Add a buffer around the image array equal to the maxiumum dilation size. This means that features just outside ALOS tile extent can contribute to dilated mask.
     rasterPoly = Image.new("I", (data.ySize + (buffer_px * 2), data.xSize + (buffer_px * 2)), 0)
     rasterize = ImageDraw.Draw(rasterPoly)
     
