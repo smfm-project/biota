@@ -441,12 +441,83 @@ def _world2Pixel(geo_t, x, y, buffer_size = 0):
     return (pixel, line)
 
 
-def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
+def getField(shp, field):
+    '''
+    Get values from a field in a shapefile attribute table.
+    
+    Args:
+        shp: A string pointing to a shapefile
+        field: A string with the field name of the attribute of interest
+    
+    Retuns:
+        An array containing all the values of the specified attribute
+    '''
+    
+    import shapefile
+    
+    assert os.path.isfile(shp), "Shapefile %s does not exist."%shp
+    
+    # Read shapefile
+    sf = shapefile.Reader(shp)
+    
+    # Get the column number of the field of interest
+    for n, this_field in enumerate(sf.fields[1:]):
+        
+        fieldname = this_field[0]
+        
+        if fieldname == field:
+            
+            field_n = n
+    
+    assert 'field_n' in locals(), "Attribute %s not found in shapefile."%str(field)
+    
+    value_out = []
+    
+    # Cycle through records:
+    for s in sf.records():
+        value_out.append(s[field_n])
+    
+    return np.array(value_out)
+
+
+def getBBox(shp, field, value):
+    '''
+    Get the bounding box of a shape in a shapefile.
+    
+    Args:
+        shp: A string pointing to a shapefile
+        field: A string with the field name of the attribute of interest
+        value: The value of the field for the shape of interest
+    
+    Retuns:
+        An list with the bounding box in the format [minlon, minlat, maxlon, maxlat]
+    '''
+        
+    import shapefile
+    
+    assert os.path.isfile(shp), "Shapefile %s does not exist."%shp
+
+    assert (np.sum(getField(shp, field) == value) > 1) == False, "The value name in a field must be unique. In the field %s there are %s records with value %s."%(str(field), str(np.sum(getField(shp, field) == value)), str(value))
+    
+    # Read shapefile
+    sf = shapefile.Reader(shp)
+    
+    shapes = np.array(sf.shapes())
+    
+    # Get bounding box    
+    bbox = shapes[getField(shp, field) == value][0].bbox
+    
+    return bbox
+    
+
+
+
+def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None):
     """
     Rasterize points, lines or polygons from a shapefile to match ALOS mosaic data.
         
     Args:
-        data:
+        data: An ALOS object
         shp: Path to a shapefile consisting of points, lines and/or polygons. This does not have to be in the same projection as ds
         buffer_size: Optionally specify a buffer to add around features of the shapefile, in decimal degrees.
 
@@ -456,6 +527,8 @@ def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
     
     import shapefile
     from osgeo import gdalnumeric
+    
+    assert np.logical_or(np.logical_and(field == None, value == None), np.logical_and(field != None, value != None)), "If specifying field or value, both must be defined. At present, field = %s and value = %s"%(str(field), str(value))
     
     # Determine size of buffer to place around lines/polygons
     buffer_px = int(round(buffer_size / data.geo_t[1]))
@@ -470,13 +543,18 @@ def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
     # Read shapefile
     sf = shapefile.Reader(shp) 
     
+    # Get shapes
+    shapes = np.array(sf.shapes())
+    
+    # If extracting a mask for just a single field.
+    if field != None:
+        
+        assert len(shapes) == len(sf.records()), "Sorry, multiple shapes for a given record are not supported by rasterizeShapefile(). Try simplifying your input shapefile."
+        shapes = shapes[getField(shp, field) == value]
+            
     # For each shape in shapefile...
-    for n,shape in enumerate(sf.iterShapes()):
-        
-        # If shape number not requried
-        if binary_mask:
-            n = 1
-        
+    for shape in shapes:
+                
         # Get shape bounding box
         sxmin, symin, sxmax, symax = shape.bbox
         
@@ -515,16 +593,16 @@ def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
             # Draw the mask for this shape...
             # if a point...
             if shape.shapeType == 0:
-                rasterize.point(pixels, n)
+                rasterize.point(pixels, 1)
 
             # a line...
             elif shape.shapeType == 3:
-                rasterize.line(pixels, n)
+                rasterize.line(pixels, 1)
   
             # or a polygon.
             elif shape.shapeType == 5:  
-                rasterize.polygon(pixels, n)
-    
+                rasterize.polygon(pixels, 1)
+        
     #Converts a Python Imaging Library array to a gdalnumeric image.
     mask = gdalnumeric.fromstring(rasterPoly.tobytes(),dtype=np.uint32)
     mask.shape = rasterPoly.im.size[1], rasterPoly.im.size[0]
@@ -535,6 +613,9 @@ def rasterizeShapefile(data, shp, buffer_size = 0., binary_mask = True):
     
     # Get rid of image buffer
     mask = mask[buffer_px:mask.shape[0]-buffer_px, buffer_px:mask.shape[1]-buffer_px]
+    
+    # Get rid of record numbers
+    mask = mask > 0
     
     return mask
 
