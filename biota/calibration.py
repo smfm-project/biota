@@ -549,7 +549,6 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None):
     # If extracting a mask for just a single field.
     if field != None:
         
-        assert len(shapes) == len(sf.records()), "Sorry, multiple shapes for a given record are not supported by rasterizeShapefile(). Try simplifying your input shapefile."
         shapes = shapes[getField(shp, field) == value]
             
     # For each shape in shapefile...
