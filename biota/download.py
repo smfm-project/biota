@@ -82,7 +82,7 @@ def download(url, output_dir = os.getcwd()):
     if exit_status == 8:
         raise ValueError('Download failed: a tile for that location was not found on the FTP server.')
     if exit_status != 0:
-        raise ValueError('Download failed with wget code %s.'%str(exit_status))
+        raise ValueError('Download failed with wget error code %s.'%str(exit_status))
     
     # Determine absolute path of downloaded file
     filepath = '%s/%s'%(output_dir.rstrip('/'), url.split('/')[-1])
