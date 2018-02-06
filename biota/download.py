@@ -76,6 +76,9 @@ def download(url, output_dir = os.getcwd()):
     # Check that output file doesn't already exist
     assert not os.path.exists('%s/%s'%(output_dir,url.split('/')[-1])), "File %s already exists at output location."%url.split('/')[-1]
     
+    # Check that output directory exists
+    assert os.path.isdir(output_dir), "The output directory (%s) does not exist. Create it, then try again."%output_dir
+    
     # Download
     exit_status = subprocess.call(['wget', '-nc', url, '-P', output_dir])
     
