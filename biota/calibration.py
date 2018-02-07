@@ -15,7 +15,6 @@ import pdb
 
 
 
-
 def enhanced_lee_filter(img, window_size = 3, n_looks = 16):
     '''
     Filters a masked array with the enhanced lee filter.
@@ -95,6 +94,36 @@ def enhanced_lee_filter(img, window_size = 3, n_looks = 16):
     return img_filtered
 
 
+def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype = 6):
+    """
+    Writes a GeoTiff file to disk.
+    
+    Args:
+        data: A numpy array.
+        geo_t: A GDAL geoMatrix (ds.GetGeoTransform()).
+        proj: A GDAL projection (ds.GetProjection()).
+        filename: Specify an output file name.
+        output_dir: Optioanlly specify an output directory. Defaults to working directory.
+        dtype: gdal data type (gdal.GDT_*). Defaults to gdal.GDT_Float32.
+    """
+    
+    from osgeo import osr, gdal
+    
+    # Get full output path
+    output_path = '%s/%s.tif'%(os.path.abspath(output_dir), filename.rstrip('.tif'))
+    
+    # Save image with georeference info
+    driver = gdal.GetDriverByName('GTiff')
+    ds = driver.Create(output_path, data.shape[0], data.shape[1], 1, dtype, options = ['COMPRESS=LZW'])
+    ds.SetGeoTransform(geo_t)
+    ds.SetProjection(proj)
+    ds.GetRasterBand(1).SetNoDataValue(0)
+    ds.GetRasterBand(1).WriteArray(data.filled(0))
+    ds = None
+
+
+
+
 class ALOS(object):
     """
     An ALOS mosaic tile.
@@ -167,7 +196,6 @@ class ALOS(object):
         
         return satellite
     
-
     def __getDirectory(self):
         """
         Return the directory containing ALOS data for a given lat/lon.
@@ -189,7 +217,6 @@ class ALOS(object):
         
         return directory
     
-    
     def __getFilename(self, append_pattern):
         """
         Return the filename for ALOS data for a given lat/lon.
@@ -207,7 +234,6 @@ class ALOS(object):
 
         # Generate file name
         return name_pattern%(lat_file, lon_file, str(self.year)[-2:], append_pattern)
-    
     
     def __getHHPath(self):
         """
@@ -315,7 +341,6 @@ class ALOS(object):
                 
         return DOY
     
-    
     def getDN(self, polarisation = 'HV'):
         """
         Loads DN (raw) values into a numpy array.
@@ -333,7 +358,6 @@ class ALOS(object):
         DN = DN_ds.ReadAsArray()
                
         return np.ma.array(DN, mask = self.mask)
-    
     
     def getGamma0(self, polarisation = 'HV', units = 'natural', lee_filter = False):
         """
@@ -356,7 +380,6 @@ class ALOS(object):
         gamma0.data[self.mask] = 0
         
         return gamma0
-    
     
     def getAGB(self, lee_filter = False, output = False):
         """
@@ -381,30 +404,16 @@ class ALOS(object):
         
         return AGB
     
-    
     def __outputGeoTiff(self, data, output_name, output_dir = os.getcwd(), dtype = 6):
         """
-        Output data as GeoTiff.
+        Output a GeoTiff file.
         """
         
-        from osgeo import osr, gdal
-
         # Generate a standardised filename
         filename = '%s_%s%s.tif'%(output_name, self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3))
         
-        # Get full output path
-        output_path = '%s/%s.tif'%(os.path.abspath(output_dir), filename)
-        
-        # Save image with georeference info
-        driver = gdal.GetDriverByName('GTiff')
-        ds = driver.Create(output_path, self.ySize, self.xSize, 1, dtype, options = ['COMPRESS=LZW'])
-        ds.SetGeoTransform(self.geo_t)
-        ds.SetProjection(self.proj)
-        ds.GetRasterBand(1).SetNoDataValue(0)
-        ds.GetRasterBand(1).WriteArray(data.filled(0))
-        ds = None
-
-
+        # Write to disk
+        outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = output_dir, dtype = dtype)
 
 
 def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vmax = 60., cmap = 'YlGn'):
@@ -490,38 +499,6 @@ def overviewFigure(data_t1, data_t2, output_dir = os.getcwd(), output_name = 'ov
     
     plt.savefig(output_path, dpi = 150)
     plt.close()
-
-
-def outputGeoTiff(data, geo_t, output_dir, output_name = 'output'):
-    """
-    Writes a GeoTiff file to disk.
-    
-    Args:
-        data: A numpy array containing ALOS mosaic data.
-        geo_t: A GDAL geoMatrix (ds.GetGeoTransform()) for data.
-        output_dir: Directory to write output file.
-        output_name: Optionally specify an output string to precede output file. Defaults to 'output'.
-    """
-    
-    from osgeo import osr, gdal
-    
-    lon, lat = geo_t[0], geo_t[3]
-    
-    hem_NS = 'S' if lat < 0 else 'N'
-    hem_EW = 'W' if lon < 0 else 'E'
-    
-    output_path = '%s/%s_%s%s.tif'%(output_dir, output_name, hem_NS + str(abs(lat)).zfill(2), hem_EW + str(abs(lon)).zfill(3))
-    
-    # Get 
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(4326)
-    
-    driver = gdal.GetDriverByName('GTiff')
-    ds = driver.Create(output_path, data.shape[0], data.shape[1], 1, gdal.GDT_Float32, )
-    ds.SetGeoTransform(geo_t)
-    ds.SetProjection(srs.ExportToWkt())
-    ds.GetRasterBand(1).WriteArray(data)
-    ds = None
 
 
 def dilateMask(mask, buffer_px):
