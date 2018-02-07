@@ -9,7 +9,90 @@ import os
 from PIL import Image, ImageDraw
 from scipy import ndimage
 import scipy.stats as stats
+
+import matplotlib.pyplot as plt
 import pdb
+
+
+
+
+def enhanced_lee_filter(img, window_size = 3, n_looks = 16):
+    '''
+    Filters a masked array with the enhanced lee filter.
+    
+    Args:
+        img: A masked array
+    Returns:
+        A masked array with a filtered verison of img
+    '''
+    
+    assert type(window_size == int), "Window size must be an integer. You input the value: %s"%str(window_size)
+    assert (window_size % 2) == 1, "Window size must be an odd number. You input the value: %s"%str(window_size)
+
+    # Inner function to calculate mean with a moving window and a masked array
+    def _window_mean(img, window_size = 3):
+        '''
+        Based on https://stackoverflow.com/questions/18419871/improving-code-efficiency-standard-deviation-on-sliding-windows
+        '''
+        
+        from scipy import signal
+        
+        c1 = signal.convolve2d(img, np.ones((window_size, window_size)) / (window_size ** 2), boundary = 'symm')
+        
+        border = window_size/2
+        
+        return c1[border:-border, border:-border]
+        
+    # Inner function to calculate standard deviation with a moving window and a masked array
+    def _window_stdev(img, window_size = 3):
+        '''
+        Based on https://stackoverflow.com/questions/18419871/improving-code-efficiency-standard-deviation-on-sliding-windows
+        and http://nickc1.github.io/python,/matlab/2016/05/17/Standard-Deviation-(Filters)-in-Matlab-and-Python.html
+        '''
+        
+        from scipy import signal
+        
+        c1 = signal.convolve2d(img, np.ones((window_size, window_size)) / (window_size ** 2), boundary = 'symm')
+        c2 = signal.convolve2d(img*img, np.ones((window_size, window_size)) / (window_size ** 2), boundary = 'symm')
+        
+        border = window_size / 2
+        
+        return np.sqrt(c2 - c1 * c1)[border:-border, border:-border]
+    
+    k = 1. #Adequate for most SAR images
+        
+    cu = (1./n_looks) ** 0.5
+    cmax =  (1 + (2./n_looks)) ** 0.5
+    
+    # Or set parameters to default?
+    #cu = 0.523
+    #cmax = 1.73
+    
+    img_mask = img.data
+    img_mask[img.mask == True] = np.nan
+   
+    img_mean = _window_mean(img_mask, window_size = window_size)
+    img_std = _window_stdev(img_mask, window_size = window_size)
+
+    ci = img_std / img_mean
+    ci[np.isfinite(ci) == False] = 0.
+    
+    w_t = np.zeros_like(ci)
+    
+    # There are three conditions in the enhanced lee filter
+    w_t[ci <= cu] = 1.
+    w_t[ci >= cmax] = 0.
+    
+    s = np.logical_and(ci > cu, ci < cmax)
+    w_t[s] = np.exp((-k * (ci[s] - cu)) / (cmax - ci[s]))
+        
+    img_filtered = (img_mean * w_t) + (img_mask * (1. - w_t))
+    
+    img_filtered = np.ma.array(img_filtered, mask = np.isnan(img_filtered))
+    
+    img_filtered.data[img_filtered.mask] = 0.
+    
+    return img_filtered
 
 
 class ALOS(object):
@@ -23,12 +106,12 @@ class ALOS(object):
         DN: An array of uncalibrated digital numbers from the ALOS tile.
         mask:
     """
-    
+        
     def __init__(self, lat, lon, year, dataloc):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
-                
+               
         # Test that inputs are of reasonable lats/lons/years
         assert type(lat) == int, "Latitude must be an integer."
         assert lat < 90. or lat > -90., "Latitude must be between -90 and 90 degrees."
@@ -51,23 +134,25 @@ class ALOS(object):
         # Determine filenames
         self.dataloc = dataloc.rstrip('/')
         self.directory = self.__getDirectory()
+        self.HH_path = self.__getHHPath()
         self.HV_path = self.__getHVPath()
         self.mask_path = self.__getMaskPath()
         self.date_path = self.__getDatePath()
 
         # Stop of the ALOS tile doesn't exist
         if not os.path.isfile(self.HV_path): 
-            raise IOError
+            raise IOError('ALOS tile does not exist in the file system.')
         
-        # Get GDAL geotransform
-        self.geo_t = self.__getGeoT(self.HV_path)
+        # Get GDAL geotransform and projection
+        self.geo_t = self.__getGeoT()
+        self.proj = self.__getProj()
         
         # Get Raster size
-        self.xSize, self.ySize = self.__getSize(self.HV_path)
+        self.xSize, self.ySize = self.__getSize(self.HH_path)
         
         # Load DN, mask, and day of year
         self.mask = self.getMask()
-        self.DN = self.getDN()
+        #self.DN = self.getDN()
         #self.DOY = self.getDOY()
 
     def __getSatellite(self):
@@ -122,15 +207,22 @@ class ALOS(object):
 
         # Generate file name
         return name_pattern%(lat_file, lon_file, str(self.year)[-2:], append_pattern)
-
-
+    
+    
+    def __getHHPath(self):
+        """
+        Determines the filepath to HV data.
+        """
+        
+        return self.__getDirectory() + self.__getFilename('sl_HH')
+    
     def __getHVPath(self):
         """
         Determines the filepath to HV data.
         """
         
         return self.__getDirectory() + self.__getFilename('sl_HV')
-
+    
     def __getMaskPath(self):
         """
         Determines the filepath to mask data.
@@ -145,17 +237,29 @@ class ALOS(object):
         
         return self.__getDirectory() + self.__getFilename('date')
     
-    def __getGeoT(self, filepath):
+    def __getGeoT(self):
         """
         Fetches a GDAL GeoTransform for tile.
         """
         
         from osgeo import gdal
-                
-        ds = gdal.Open(filepath, 0)
+         
+        ds = gdal.Open(self.__getHHPath(), 0)
         geo_t = ds.GetGeoTransform()
                
         return geo_t
+    
+    def __getProj(self):
+        """
+        Fetches projection info for tile.
+        """
+        
+        from osgeo import gdal
+                
+        ds = gdal.Open(self.__getHHPath(), 0)
+        proj = ds.GetProjection()
+        
+        return proj
     
     def __getSize(self, filepath):
         """
@@ -210,46 +314,97 @@ class ALOS(object):
             DOY[day_after_launch == day] = doy
                 
         return DOY
-        
     
-    def getDN(self):
+    
+    def getDN(self, polarisation = 'HV'):
         """
         Loads DN (raw) values into a numpy array.
         """
         
         from osgeo import gdal
-        
-        DN_ds = gdal.Open(self.HV_path, 0)
+
+        assert polarisation == 'HH' or polarisation == 'HV', "polarisation must be either 'HH' or 'HV'."
+               
+        if polarisation == 'HV':
+            DN_ds = gdal.Open(self.HV_path, 0)
+        else:
+            DN_ds = gdal.Open(self.HH_path, 0)
+
         DN = DN_ds.ReadAsArray()
-        
-        return DN
+               
+        return np.ma.array(DN, mask = self.mask)
     
-        
-    def getGamma0(self, units = 'natural'):
+    
+    def getGamma0(self, polarisation = 'HV', units = 'natural', lee_filter = False):
         """
         Calibrates data to gamma0 (baskscatter) in decibels or natural units.
         """
         
         assert units == 'natural' or units == 'decibels', "Units must be 'natural' or 'decibels'. You input %s."%units
         
-        DN = np.ma.array(self.DN, mask = np.logical_or(self.mask, self.DN == 0))
+        # Calibrate DN to units of dB
+        gamma0 = 10 * np.ma.log10(self.getDN(polarisation = polarisation).astype(np.float) ** 2) - 83. # units = decibels
         
-        gamma0 = 10 * np.ma.log10(DN.astype(np.float) ** 2) - 83. # units = decibels
+        # Apply filter based on dB values
+        if lee_filter:
+            gamma0 = enhanced_lee_filter(gamma0)
         
-        if units == 'decibels':
-            return gamma0
-        elif units == 'natural':
-            return 10 ** (gamma0 / 10.) # Convert to natural units
+        # Convert to natural units where specified
+        if units == 'natural': gamma0 = 10 ** (gamma0 / 10.)
         
-    def getAGB(self):
+        # Keep masked values tidy
+        gamma0.data[self.mask] = 0
+        
+        return gamma0
+    
+    
+    def getAGB(self, lee_filter = False, output = False):
         """
         Calibrates data to aboveground biomass (AGB).
         Placeholder equation to calibrate backscatter (gamma0) to AGB (tC/ha).
         """
         
-        AGB = 715.667 * self.getGamma0() - 5.967
+        # ALOS-1
+        if self.satellite == 'ALOS-1':
+            AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV', lee_filter = lee_filter) - 5.967
+            
+        elif self.satellite == 'ALOS-2':
+            AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV', lee_filter = lee_filter) - 5.967
+            
+        else:       
+            raise ValueError("Unknown satellite named ''. self.satellite must be 'ALOS-1' or 'ALOS-2'."%self.satellite)
+        
+        # Keep masked values tidy
+        AGB.data[self.mask] = 0.
+        
+        if output: self.__outputGeoTiff(AGB, 'AGB')
         
         return AGB
+    
+    
+    def __outputGeoTiff(self, data, output_name, output_dir = os.getcwd(), dtype = 6):
+        """
+        Output data as GeoTiff.
+        """
+        
+        from osgeo import osr, gdal
+
+        # Generate a standardised filename
+        filename = '%s_%s%s.tif'%(output_name, self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3))
+        
+        # Get full output path
+        output_path = '%s/%s.tif'%(os.path.abspath(output_dir), filename)
+        
+        # Save image with georeference info
+        driver = gdal.GetDriverByName('GTiff')
+        ds = driver.Create(output_path, self.ySize, self.xSize, 1, dtype, options = ['COMPRESS=LZW'])
+        ds.SetGeoTransform(self.geo_t)
+        ds.SetProjection(self.proj)
+        ds.GetRasterBand(1).SetNoDataValue(0)
+        ds.GetRasterBand(1).WriteArray(data.filled(0))
+        ds = None
+
+
 
 
 def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vmax = 60., cmap = 'YlGn'):
@@ -675,6 +830,10 @@ if __name__ == '__main__':
     lon = 33#34#39
     
     data_t1 = ALOS(lat, lon, t1, data_dir)
+    
+    AGB_t1 = data_t1.getAGB(lee_filter = True, output = True)
+    
+    """
     data_t2 = ALOS(lat, lon, t2, data_dir)
     
     # Build masks (optionally with buffers)
@@ -694,7 +853,7 @@ if __name__ == '__main__':
     data_t2.mask = np.logical_or(np.logical_or(data_t2.mask, water_mask), moz_mask == False)
         
     overviewFigure(data_t1, data_t2, output_dir = output_dir)
-
+    """
 
 """
 
