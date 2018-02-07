@@ -8,6 +8,8 @@ import os
 import subprocess
 import tarfile
 
+import pdb
+
 """
 This is a simple script to assist in the downloading of data from the ALOS mosaic product.
 """
@@ -73,19 +75,25 @@ def download(url, output_dir = os.getcwd()):
     Download data from JAXA FTP server
     """
     
-    # Check that output file doesn't already exist
-    assert not os.path.exists('%s/%s'%(output_dir,url.split('/')[-1])), "File %s already exists at output location."%url.split('/')[-1]
-    
     # Check that output directory exists
     assert os.path.isdir(output_dir), "The output directory (%s) does not exist. Create it, then try again."%output_dir
     
-    # Download
-    exit_status = subprocess.call(['wget', '-nc', url, '-P', output_dir])
+    # Check that output file doesn't already exist
+    this_file = '%s/%s'%(output_dir,url.split('/')[-1])
     
-    if exit_status == 8:
-        raise ValueError('Download failed: a tile for that location was not found on the FTP server.')
-    if exit_status != 0:
-        raise ValueError('Download failed with wget error code %s.'%str(exit_status))
+    if os.path.exists(this_file):
+        print "WARNING: File %s already exists. Skipping."%this_file
+    elif os.path.exists(this_file[:-7]):
+        print "WARNING: File %s already exists. Skipping."%this_file[:-7]
+
+    else:
+        # Download
+        exit_status = subprocess.call(['wget', '-nc', url, '-P', output_dir])
+        
+        if exit_status == 8:
+            raise ValueError('Download failed: a tile for that location was not found on the FTP server.')
+        if exit_status != 0:
+            raise ValueError('Download failed with wget error code %s.'%str(exit_status))
     
     # Determine absolute path of downloaded file
     filepath = '%s/%s'%(output_dir.rstrip('/'), url.split('/')[-1])
@@ -101,15 +109,17 @@ def decompress(targz_file, remove = False):
     assert targz_file.endswith("tar.gz"), "File name must end with .tar.gz to be decompressed."
     
     # Check that output file doesn't already exist
-    assert not os.path.exists(targz_file.split('/')[-1].split('.')[0]), "File %s already exists at output location. Not extracting."%targz_file
+    if os.path.exists(targz_file.split('/')[-1].split('.')[0]):
+        print 'WARNING: File %s already exists at output location. Not extracting.'%targz_file
     
-    print 'Extracting %s'%targz_file
-    
-    tar = tarfile.open(targz_file, "r:gz")
-    tar.extractall(path = targz_file[:-7])
-    tar.close()
-    
-    if remove: removeTarGz(targz_file)
+    else:
+        print 'Extracting %s'%targz_file
+            
+        tar = tarfile.open(targz_file, "r:gz")
+        tar.extractall(path = targz_file[:-7])
+        tar.close()
+        
+        if remove: removeTarGz(targz_file)
 
 
 def removeTarGz(targz_file):
