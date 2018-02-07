@@ -101,7 +101,7 @@ def decompress(targz_file, remove = False):
     assert targz_file.endswith("tar.gz"), "File name must end with .tar.gz to be decompressed."
     
     # Check that output file doesn't already exist
-    assert not os.path.exists(targz_file), "File %s already exists at output location. Not extracting."%targz_file
+    assert not os.path.exists(targz_file.split('/')[-1].split('.')[0]), "File %s already exists at output location. Not extracting."%targz_file
     
     print 'Extracting %s'%targz_file
     
