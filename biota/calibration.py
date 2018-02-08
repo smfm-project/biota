@@ -122,6 +122,105 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
     ds = None
 
 
+def getContiguousAreas(data, value, min_pixels = 1):
+    '''
+    Get pixels that come from the same contigous area.
+    
+    Args:
+        data: A numpy array
+        value: Pixel value to include in contiguous_area (e.g. True for forest)
+        min_area: What minimum area should be included (number of pixels, queens move)
+    
+    Returns:
+        A binary array of pixels that meet the conditiuons
+    '''
+    
+    from scipy.ndimage.measurements import label
+    
+    # If any pixels are masked, we give them the value of the nearest valid pixel.
+    if np.ma.isMaskedArray(data):
+        if data.mask.sum() > 0:
+            ind = ndimage.distance_transform_edt(data.mask, return_distances = False, return_indices = True)
+            data = np.ma.array(data.data[tuple(ind)], mask = data.mask)
+    
+    # Extract area that meets condition
+    binary_array = (data == value) * 1
+    
+    # Label contigous areas with a number
+    structure = ndimage.generate_binary_structure(2,2) # This connects diagonal elements
+    location_id, n_areas = label(binary_array, structure = structure)
+    
+    # Get count of each value in array
+    label_area = np.bincount(location_id.flatten())[1:]
+    
+    # Find those IDs that meet minimum area requirements
+    include_id = np.arange(1, n_areas + 1)[label_area >= min_pixels]
+    
+    # Get a binary array of location_id pixels that meet the minimum area requirement
+    contiguous_area = np.in1d(location_id, include_id).reshape(data.shape).astype(np.bool)
+    
+    # Return an array giving values to each area
+    location_id[contiguous_area == False] = 0
+    
+    # Re-number location_ids 1 to n, given that some unique value shave now been removed
+    location_id_unique, location_id_indices = np.unique(location_id, return_inverse = True)
+    location_id = np.arange(0, location_id_unique.shape[0], 1)[location_id_indices].reshape(data.shape)
+    
+    # Put mask back in if input was a masked array
+    if np.ma.isMaskedArray(data):
+        contiguous_area = np.ma.array(contiguous_area, mask = data.mask)
+        location_id = np.ma.array(location_id, mask = data.mask)
+
+    return contiguous_area, location_id
+
+
+def calculateLDI(unique_ids):
+    '''
+    Calculates an index of landscape 
+    '''
+    
+    # If masked array, separate mask
+    if np.ma.isMaskedArray(unique_ids):
+        mask = unique_ids.mask
+        unique_ids = unique_ids.data
+    else:
+        mask = np.zeros_like(unique_ids, dtype=np.bool)
+       
+    # Calculate LDI
+    selection_1 = np.zeros_like(unique_ids,dtype = np.bool).ravel()
+    selection_2 = np.zeros_like(unique_ids,dtype = np.bool).ravel()
+    
+    # Draw 450 random pixels
+    selection_1[:450] = True
+    selection_2[:450] = True
+    
+    # Shuffle to get random pixels
+    np.random.shuffle(selection_1)
+    np.random.shuffle(selection_2)
+    
+    selection_1 = selection_1.reshape((45,45))
+    selection_2 = selection_2.reshape((45,45))
+    
+    # This ignores IDs where one or the other of selection falls in an area of nodata
+    mask_selection = np.logical_or(mask[selection_1], mask[selection_2])
+    ID1 = unique_ids[selection_1][mask_selection==False]
+    ID2 = unique_ids[selection_2][mask_selection==False]
+    
+    # Shuffle again to randomise pairs spatially
+    np.random.shuffle(ID1)
+    np.random.shuffle(ID2)
+    
+    # Number of random points from different patches
+    different_patches = np.sum(ID1 != ID2)
+    
+    # Divide by potential matches
+    if (mask_selection==False).sum() > 0:
+        LDI = float(different_patches) / (mask_selection==False).sum()
+    # Unless everything is masked, in which case return nan.
+    else:
+        LDI = np.nan
+    
+    return LDI
 
 
 class ALOS(object):
@@ -178,6 +277,10 @@ class ALOS(object):
         
         # Get Raster size
         self.xSize, self.ySize = self.__getSize(self.HH_path)
+        
+        # Determine x and y resolution in meters
+        self.xRes = self.__getXRes()
+        self.yRes = self.__getYRes()        
         
         # Load DN, mask, and day of year
         self.mask = self.getMask()
@@ -262,6 +365,26 @@ class ALOS(object):
         """
         
         return self.__getDirectory() + self.__getFilename('date')
+    
+    def __getXRes(self):
+        """
+        Approximates the resolution of a pixel in meters.
+        From: https://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters
+        """
+        
+        m_per_degree = 111132.954 * math.cos(self.lat - 0.5)
+        
+        return m_per_degree / self.xSize
+        
+    def __getYRes(self):
+        """
+        Approximates the resolution of a pixel in meters.
+        From: https://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters
+        """
+        
+        m_per_degree = 111132.92 - 559.82 * math.cos(2 * (self.lat - 0.5)) + 1.175 * math.cos(4 * self.lat - 0.5)
+        
+        return m_per_degree / self.ySize
     
     def __getGeoT(self):
         """
@@ -359,7 +482,7 @@ class ALOS(object):
                
         return np.ma.array(DN, mask = self.mask)
     
-    def getGamma0(self, polarisation = 'HV', units = 'natural', lee_filter = False):
+    def getGamma0(self, polarisation = 'HV', units = 'natural', lee_filter = False, output = False):
         """
         Calibrates data to gamma0 (baskscatter) in decibels or natural units.
         """
@@ -378,6 +501,8 @@ class ALOS(object):
         
         # Keep masked values tidy
         gamma0.data[self.mask] = 0
+        
+        if output: self.__outputGeoTiff(gamma0, 'Gamma0')
         
         return gamma0
     
@@ -404,6 +529,73 @@ class ALOS(object):
         
         return AGB
     
+    def getWoodyCover(self, threshold, min_area = 0., lee_filter = False, output = False):
+        """
+        Get woody cover, based on a threshold of AGB.
+        min_area in ha
+        """
+        
+        woody_cover = self.getAGB(lee_filter = lee_filter) >= float(threshold)
+               
+        if min_area > 0:
+            
+            # Calculate number of pixels in min_area
+            min_pixels = int(round(min_area / (self.yRes * self.xRes * 0.0001)))
+            
+            # Remove pixels that aren't part of a forest block of size at least min_pixels
+            contiguous_area, location_id = getContiguousAreas(woody_cover, True, min_pixels = min_pixels)
+            woody_cover[contiguous_area == False] = False
+        
+        if output: self.__outputGeoTiff(woody_cover * 1, 'WoodyCover', dtype = gdal.GDT_Byte)
+        
+        return woody_cover
+    
+    def getForestPatches(self, threshold, min_area = 0, lee_filter = False, output = False):
+        """
+        Get numbered forest patches, based on woody cover threshold.
+        """
+        
+        woody_cover = self.getWoodyCover(threshold, lee_filter = lee_filter)
+        
+        # Calculate number of pixels in min_area
+        min_pixels = int(round(min_area / (self.yRes * self.xRes * 0.0001)))
+                
+        # Get areas that meet that threshold
+        contiguous_area, location_id = getContiguousAreas(woody_cover, True, min_pixels = min_pixels)
+                
+        if output: self.__outputGeoTiff(woody_cover * 1, 'ForestPatches', dtype = gdal.GDT_Int32)
+        
+        return location_id
+    
+    def calculateLDI(self, threshold, lee_filter = False, output = False):
+        """
+        """
+        
+        woody_cover = self.getWoodyCover(threshold, lee_filter = lee_filter)
+        
+        LDI = np.zeros((100, 100))
+        
+        for ymin in np.arange(0,4500,45):
+            ymax = ymin + 45
+            for xmin in np.arange(0,4500,45):
+                xmax = xmin + 45
+                
+                this_patch = woody_cover[ymin:ymax, xmin:xmax]
+                
+                # Get connected patches of forest and nonforest
+                forest_area, forest_id = getContiguousAreas(this_patch, True)
+                nonforest_area, nonforest_id = getContiguousAreas(this_patch, False)
+                
+                # Supply a unique ID to each habitat patch, whether forest or nonforest.
+                unique_ids = forest_id.copy()
+                unique_ids[nonforest_id != 0] = forest_id[nonforest_id != 0] + (nonforest_id[nonforest_id != 0] + np.max(forest_id) + 1)
+                                                
+                LDI[ymin/45, xmin/45] = calculateLDI(unique_ids)
+        
+        return LDI
+                
+
+        
     def __outputGeoTiff(self, data, output_name, output_dir = os.getcwd(), dtype = 6):
         """
         Output a GeoTiff file.
@@ -414,6 +606,87 @@ class ALOS(object):
         
         # Write to disk
         outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = output_dir, dtype = dtype)
+
+
+
+
+if __name__ == '__main__':
+    
+    data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
+    output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
+
+    t1 = 2007
+    t2 = 2010
+
+    lat = -18#-9#-11
+    lon = 33#34#39
+    
+    data_t1 = ALOS(lat, lon, t1, data_dir)
+    LDI_t1 = data_t1.calculateLDI(15., lee_filter = True)
+    
+    data_t2 = ALOS(lat, lon, t2, data_dir)
+    LDI_t2 = data_t2.calculateLDI(15., lee_filter = True)
+    
+    plt.subplot(121)
+    plt.imshow(LDI_t1, vmin=0, vmax=1, cmap='viridis', interpolation = 'nearest')
+    plt.colorbar()
+    plt.subplot(122)
+    plt.imshow(LDI_t2, vmin=0, vmax=1, cmap='viridis', interpolation = 'nearest')
+    plt.colorbar()
+    plt.show()
+    
+    """
+    data_t2 = ALOS(lat, lon, t2, data_dir)
+    
+    # Build masks (optionally with buffers)
+    lakes = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_wat/MOZ_water_areas_dcw.shp'
+    rivers = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_wat/MOZ_water_lines_dcw.shp'
+    mozambique = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_adm/MOZ_adm0.shp'
+    wdpa = '/home/sbowers3/DATA/GIS_data/mozambique/WDPA/MOZ_WDPA.shp'
+    
+    lake_mask = rasterizeShapefile(data_t1, lakes, buffer_size = 0.005)
+    river_mask = rasterizeShapefile(data_t1, rivers, buffer_size = 0.005)
+    water_mask = np.logical_or(river_mask, lake_mask)
+    
+    moz_mask = rasterizeShapefile(data_t1, mozambique)
+    wdpa_mask = rasterizeShapefile(data_t1, wdpa)
+
+    data_t1.mask = np.logical_or(np.logical_or(data_t1.mask, water_mask), moz_mask == False)
+    data_t2.mask = np.logical_or(np.logical_or(data_t2.mask, water_mask), moz_mask == False)
+        
+    overviewFigure(data_t1, data_t2, output_dir = output_dir)
+    """
+
+"""
+
+
+
+"""
+
+"""
+for lat in np.arange(-19,-14,1):
+    for lon in np.arange(30,35,1):
+        HVfile_t1, maskfile_t1 = generateFilenames(lat, lon, t1, data_dir)
+        HVfile_t2, maskfile_t2 = generateFilenames(lat, lon, t2, data_dir)
+        
+        ds_t1, data_t1 = openTile(HVfile_t1, maskfile_t1)
+        ds_t2, data_t2 = openTile(HVfile_t2, maskfile_t2)
+
+        gamma0_t1 = calibrateToGamma0(data_t1)
+        gamma0_t2 = calibrateToGamma0(data_t2)
+        
+        gamma0_change = (gamma0_t2 - gamma0_t1) / (t2 - t1)
+        
+        gamma0_pcChange = 100 * (gamma0_change / gamma0_t1)
+        
+        ##outputGeoTiff(gamma0_pcChange, ds_t1.GetGeoTransform(), output_dir + 'test_outputs/', output_name = 'gamma0_change')
+"""
+
+
+
+
+
+
 
 
 def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vmax = 60., cmap = 'YlGn'):
@@ -791,72 +1064,6 @@ def getTilesInShapefile(shp):
     
     return sorted(list(tiles_to_include))
     
-
-
-
-
-if __name__ == '__main__':
-    
-    data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
-    output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
-
-    t1 = 2007
-    t2 = 2010
-
-    lat = -18#-9#-11
-    lon = 33#34#39
-    
-    data_t1 = ALOS(lat, lon, t1, data_dir)
-    
-    AGB_t1 = data_t1.getAGB(lee_filter = True, output = True)
-    
-    """
-    data_t2 = ALOS(lat, lon, t2, data_dir)
-    
-    # Build masks (optionally with buffers)
-    lakes = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_wat/MOZ_water_areas_dcw.shp'
-    rivers = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_wat/MOZ_water_lines_dcw.shp'
-    mozambique = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_adm/MOZ_adm0.shp'
-    wdpa = '/home/sbowers3/DATA/GIS_data/mozambique/WDPA/MOZ_WDPA.shp'
-    
-    lake_mask = rasterizeShapefile(data_t1, lakes, buffer_size = 0.005)
-    river_mask = rasterizeShapefile(data_t1, rivers, buffer_size = 0.005)
-    water_mask = np.logical_or(river_mask, lake_mask)
-    
-    moz_mask = rasterizeShapefile(data_t1, mozambique)
-    wdpa_mask = rasterizeShapefile(data_t1, wdpa)
-
-    data_t1.mask = np.logical_or(np.logical_or(data_t1.mask, water_mask), moz_mask == False)
-    data_t2.mask = np.logical_or(np.logical_or(data_t2.mask, water_mask), moz_mask == False)
-        
-    overviewFigure(data_t1, data_t2, output_dir = output_dir)
-    """
-
-"""
-
-
-
-"""
-
-"""
-for lat in np.arange(-19,-14,1):
-    for lon in np.arange(30,35,1):
-        HVfile_t1, maskfile_t1 = generateFilenames(lat, lon, t1, data_dir)
-        HVfile_t2, maskfile_t2 = generateFilenames(lat, lon, t2, data_dir)
-        
-        ds_t1, data_t1 = openTile(HVfile_t1, maskfile_t1)
-        ds_t2, data_t2 = openTile(HVfile_t2, maskfile_t2)
-
-        gamma0_t1 = calibrateToGamma0(data_t1)
-        gamma0_t2 = calibrateToGamma0(data_t2)
-        
-        gamma0_change = (gamma0_t2 - gamma0_t1) / (t2 - t1)
-        
-        gamma0_pcChange = 100 * (gamma0_change / gamma0_t1)
-        
-        ##outputGeoTiff(gamma0_pcChange, ds_t1.GetGeoTransform(), output_dir + 'test_outputs/', output_name = 'gamma0_change')
-"""
-
 
 
 
