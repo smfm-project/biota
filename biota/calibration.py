@@ -313,12 +313,18 @@ class ALOS(object):
     
     def __getDirectory(self):
         """
-        Return the directory containing ALOS data for a given lat/lon.
+        Return the directory containing ALOS data for a given lat/lon. Assumes its distributed as a 5x5 tile at present.
         """
         
+        # Calculate the hemisphere and lat/lon of the 5x5 tile
+        lat_dir = self.lat + (5 - self.lat) % 5
+        lon_dir = self.lon - (self.lon % 5)
+        hem_NS_dir = 'S' if lat_dir < 0 else 'N'
+        hem_EW_dir = 'W' if lon_dir < 0 else 'E'
+
         # Get lat/lon for directory (lat/lon of upper-left hand corner of 5x5 tiles)
-        lat_dir = self.hem_NS + str(abs(self.lat + (5 - self.lat) % 5)).zfill(2)
-        lon_dir = self.hem_EW +  str(abs(self.lon - (self.lon % 5))).zfill(3)
+        lat_dir = hem_NS_dir + str(abs(lat_dir)).zfill(2)
+        lon_dir = hem_EW_dir + str(abs(lon_dir)).zfill(3)
                 
         # Directories and files have standardised pattern
         name_pattern = '%s%s_%s_%s'
@@ -538,7 +544,7 @@ class ALOS(object):
             AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV', lee_filter = lee_filter) - 5.967
             
         else:       
-            raise ValueError("Unknown satellite named ''. self.satellite must be 'ALOS-1' or 'ALOS-2'."%self.satellite)
+            raise ValueError("Unknown satellite named '%s'. self.satellite must be 'ALOS-1' or 'ALOS-2'."%self.satellite)
         
         # Keep masked values tidy
         AGB.data[self.mask] = 0.
