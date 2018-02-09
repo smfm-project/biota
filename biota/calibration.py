@@ -539,7 +539,8 @@ class ALOS(object):
         # ALOS-1
         if self.satellite == 'ALOS-1':
             AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV', lee_filter = lee_filter) - 5.967
-            
+        
+        # ALOS-1 (to calculate)
         elif self.satellite == 'ALOS-2':
             AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV', lee_filter = lee_filter) - 5.967
             
@@ -688,7 +689,7 @@ class ALOS(object):
         if nodata == '': nodata = self.nodata
         
         # Generate a standardised filename
-        filename = '%s_%s%s.tif'%(output_name, self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3))
+        filename = '%s_%s_%s%s.tif'%(output_name, str(self.year), self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3))
         
         # Write to disk
         outputGeoTiff(data, filename, geo_t, proj, output_dir = output_dir, dtype = dtype)
