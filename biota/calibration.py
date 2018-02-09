@@ -94,7 +94,7 @@ def enhanced_lee_filter(img, window_size = 3, n_looks = 16):
     return img_filtered
 
 
-def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype = 6):
+def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype = 6, nodata = None):
     """
     Writes a GeoTiff file to disk.
     
@@ -105,6 +105,7 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
         filename: Specify an output file name.
         output_dir: Optioanlly specify an output directory. Defaults to working directory.
         dtype: gdal data type (gdal.GDT_*). Defaults to gdal.GDT_Float32.
+        nodata: The nodata value for the array
     """
     
     from osgeo import osr, gdal
@@ -117,8 +118,16 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
     ds = driver.Create(output_path, data.shape[0], data.shape[1], 1, dtype, options = ['COMPRESS=LZW'])
     ds.SetGeoTransform(geo_t)
     ds.SetProjection(proj)
-    ds.GetRasterBand(1).SetNoDataValue(0)
-    ds.GetRasterBand(1).WriteArray(data.filled(0))
+    
+    # Set nodata
+    if nodata != None:
+        ds.GetRasterBand(1).SetNoDataValue(nodata)
+    
+    # Write data for masked and unmasked arrays
+    if np.ma.isMaskedArray(data):
+        ds.GetRasterBand(1).WriteArray(data.filled(nodata))
+    else:
+        ds.GetRasterBand(1).WriteArray(data)
     ds = None
 
 
@@ -191,15 +200,15 @@ def calculateLDI(unique_ids):
     selection_2 = np.zeros_like(unique_ids,dtype = np.bool).ravel()
     
     # Draw 450 random pixels
-    selection_1[:450] = True
-    selection_2[:450] = True
+    selection_1[:(selection_1.shape[0]/5)] = True
+    selection_2[:(selection_2.shape[0]/5)] = True
     
     # Shuffle to get random pixels
     np.random.shuffle(selection_1)
     np.random.shuffle(selection_2)
     
-    selection_1 = selection_1.reshape((45,45))
-    selection_2 = selection_2.reshape((45,45))
+    selection_1 = selection_1.reshape(unique_ids.shape)
+    selection_2 = selection_2.reshape(unique_ids.shape)
     
     # This ignores IDs where one or the other of selection falls in an area of nodata
     mask_selection = np.logical_or(mask[selection_1], mask[selection_2])
@@ -266,7 +275,7 @@ class ALOS(object):
         self.HV_path = self.__getHVPath()
         self.mask_path = self.__getMaskPath()
         self.date_path = self.__getDatePath()
-
+        
         # Stop of the ALOS tile doesn't exist
         if not os.path.isfile(self.HV_path): 
             raise IOError('ALOS tile does not exist in the file system.')
@@ -280,7 +289,10 @@ class ALOS(object):
         
         # Determine x and y resolution in meters
         self.xRes = self.__getXRes()
-        self.yRes = self.__getYRes()        
+        self.yRes = self.__getYRes()
+        
+        # Record the nodata value
+        self.nodata = self.__getNodata()
         
         # Load DN, mask, and day of year
         self.mask = self.getMask()
@@ -386,6 +398,12 @@ class ALOS(object):
         
         return m_per_degree / self.ySize
     
+    def __getNodata(self):
+        """
+        Return the nodata value for ALOS array. Should always be 0, so this function is a placeholder should the format change.
+        """
+        return 0
+    
     def __getGeoT(self):
         """
         Fetches a GDAL GeoTransform for tile.
@@ -482,7 +500,7 @@ class ALOS(object):
                
         return np.ma.array(DN, mask = self.mask)
     
-    def getGamma0(self, polarisation = 'HV', units = 'natural', lee_filter = False, output = False):
+    def getGamma0(self, polarisation = 'HV', units = 'natural', lee_filter = True, output = False):
         """
         Calibrates data to gamma0 (baskscatter) in decibels or natural units.
         """
@@ -506,7 +524,7 @@ class ALOS(object):
         
         return gamma0
     
-    def getAGB(self, lee_filter = False, output = False):
+    def getAGB(self, lee_filter = True, output = False):
         """
         Calibrates data to aboveground biomass (AGB).
         Placeholder equation to calibrate backscatter (gamma0) to AGB (tC/ha).
@@ -529,11 +547,13 @@ class ALOS(object):
         
         return AGB
     
-    def getWoodyCover(self, threshold, min_area = 0., lee_filter = False, output = False):
+    def getWoodyCover(self, threshold, min_area = 0., lee_filter = True, output = False):
         """
         Get woody cover, based on a threshold of AGB.
         min_area in ha
         """
+        
+        from osgeo import gdal
         
         woody_cover = self.getAGB(lee_filter = lee_filter) >= float(threshold)
                
@@ -550,10 +570,12 @@ class ALOS(object):
         
         return woody_cover
     
-    def getForestPatches(self, threshold, min_area = 0, lee_filter = False, output = False):
+    def getForestPatches(self, threshold, min_area = 0, lee_filter = True, output = False):
         """
         Get numbered forest patches, based on woody cover threshold.
         """
+        
+        from osgeo import gdal
         
         woody_cover = self.getWoodyCover(threshold, lee_filter = lee_filter)
         
@@ -567,18 +589,43 @@ class ALOS(object):
         
         return location_id
     
-    def calculateLDI(self, threshold, lee_filter = False, output = False):
+    def __shrinkGeoT(self, factor):
         """
+        Function to modify gdal geo_transform to output at correct resolution for downsampled products.
         """
+        
+        geo_t = list(self.geo_t)
+        
+        geo_t[1] = geo_t[1] * (self.xSize / factor)
+        geo_t[-1] = geo_t[-1] * (self.ySize / factor)
+        
+        return tuple(geo_t)
+    
+    def calculateLDI(self, threshold, lee_filter = True, output = False):
+        """
+        Landcover Division Index (LDI) is an indicator of the degree of habitat coherence, ranging from 0 (fully contiguous) to 1 (very fragmented).
+        
+        LDI is defined as the probability that two randomly selected points in the landscape are situated in two different patches of the habitat (Jaeger 2000; Mcgarigal 2015).
+        
+        Args:
+        
+        Returns:
+            An array with LDI values.
+        """
+        
+        from osgeo import gdal
         
         woody_cover = self.getWoodyCover(threshold, lee_filter = lee_filter)
         
-        LDI = np.zeros((100, 100))
+        # Reduce to an image of 100 x 100 pixels
+        factor = 100
         
-        for ymin in np.arange(0,4500,45):
-            ymax = ymin + 45
-            for xmin in np.arange(0,4500,45):
-                xmax = xmin + 45
+        LDI = np.zeros((factor, factor))
+        
+        for ymin in np.arange(0, self.ySize, self.ySize / factor):
+            ymax = ymin + (self.ySize / factor)
+            for xmin in np.arange(0, self.xSize, self.xSize / factor):
+                xmax = xmin + (self.xSize / factor)
                 
                 this_patch = woody_cover[ymin:ymax, xmin:xmax]
                 
@@ -590,22 +637,55 @@ class ALOS(object):
                 unique_ids = forest_id.copy()
                 unique_ids[nonforest_id != 0] = forest_id[nonforest_id != 0] + (nonforest_id[nonforest_id != 0] + np.max(forest_id) + 1)
                                                 
-                LDI[ymin/45, xmin/45] = calculateLDI(unique_ids)
+                LDI[ymin / (self.ySize / factor), xmin / (self.xSize / factor)] = calculateLDI(unique_ids)
+        
+        if output: self.__outputGeoTiff(LDI, 'LDI', geo_t = self.__shrinkGeoT(factor), nodata = None)
         
         return LDI
-                
-
+    
+    def calculateTWC(self, threshold, lee_filter = True, output = False):
+        """
+        Total woody cover (TWC) describes the propotion of woody cover in a downsampled image.
+        """
         
-    def __outputGeoTiff(self, data, output_name, output_dir = os.getcwd(), dtype = 6):
+        from osgeo import gdal
+        
+        woody_cover = self.getWoodyCover(threshold, lee_filter = lee_filter)
+        
+        # Reduce to an image of 100 x 100 pixels
+        factor = 100
+        
+        TWC = np.zeros((factor, factor))
+        
+        for ymin in np.arange(0, self.ySize, self.ySize / factor):
+            ymax = ymin + (self.ySize / factor)
+            for xmin in np.arange(0, self.xSize, self.xSize / factor):
+                xmax = xmin + (self.xSize / factor)
+                
+                this_patch = woody_cover[ymin:ymax, xmin:xmax]
+                
+                # Get proportion of woody cover in patch
+                TWC[ymin / (self.ySize / factor), xmin / (self.xSize / factor)] = float(this_patch.sum()) / ((self.ySize / factor) * (self.xSize / factor))
+        
+        if output: self.__outputGeoTiff(TWC, 'TWC', geo_t = self.__shrinkGeoT(factor), nodata = None)
+        
+        return TWC
+    
+    def __outputGeoTiff(self, data, output_name, output_dir = os.getcwd(), dtype = 6, geo_t = '', proj = '', nodata = ''):
         """
         Output a GeoTiff file.
         """
+        
+        # Where nothing specified, use standard geo_t and proj definitions. This is to allow these to be overwritten for functions that reduce output size.
+        if geo_t == '': geo_t = self.geo_t
+        if proj == '': proj = self.proj
+        if nodata == '': nodata = self.nodata
         
         # Generate a standardised filename
         filename = '%s_%s%s.tif'%(output_name, self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3))
         
         # Write to disk
-        outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = output_dir, dtype = dtype)
+        outputGeoTiff(data, filename, geo_t, proj, output_dir = output_dir, dtype = dtype)
 
 
 
@@ -618,12 +698,12 @@ if __name__ == '__main__':
     t1 = 2007
     t2 = 2010
 
-    lat = -18#-9#-11
+    lat = -19#-9#-11
     lon = 33#34#39
     
     data_t1 = ALOS(lat, lon, t1, data_dir)
-    LDI_t1 = data_t1.calculateLDI(15., lee_filter = True)
-    
+    LDI_t1 = data_t1.calculateLDI(15., output=True)
+    """
     data_t2 = ALOS(lat, lon, t2, data_dir)
     LDI_t2 = data_t2.calculateLDI(15., lee_filter = True)
     
@@ -634,7 +714,7 @@ if __name__ == '__main__':
     plt.imshow(LDI_t2, vmin=0, vmax=1, cmap='viridis', interpolation = 'nearest')
     plt.colorbar()
     plt.show()
-    
+    """
     """
     data_t2 = ALOS(lat, lon, t2, data_dir)
     
