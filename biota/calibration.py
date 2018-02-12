@@ -9,6 +9,7 @@ import os
 from PIL import Image, ImageDraw
 from scipy import ndimage
 import scipy.stats as stats
+import skimage.measure
 
 import matplotlib.pyplot as plt
 import pdb
@@ -56,7 +57,10 @@ def enhanced_lee_filter(img, window_size = 3, n_looks = 16):
         
         border = window_size / 2
         
-        return np.sqrt(c2 - c1 * c1)[border:-border, border:-border]
+        variance = c2 - c1 * c1
+        variance[variance < 0] += 0.01 # Prevents divide by zero errors.
+        
+        return np.sqrt(variance)[border:-border, border:-border]
     
     k = 1. #Adequate for most SAR images
         
@@ -67,11 +71,12 @@ def enhanced_lee_filter(img, window_size = 3, n_looks = 16):
     #cu = 0.523
     #cmax = 1.73
     
-    img_mask = img.data
-    img_mask[img.mask == True] = np.nan
-   
-    img_mean = _window_mean(img_mask, window_size = window_size)
-    img_std = _window_stdev(img_mask, window_size = window_size)
+    # Interpolate across nodata areas. No standard Python filters understand nodata values; this is a simplification
+    indices = ndimage.distance_transform_edt(img.mask, return_distances = False, return_indices = True)
+    data = img.data[tuple(indices)]
+    
+    img_mean = _window_mean(data, window_size = window_size)
+    img_std = _window_stdev(data, window_size = window_size)
 
     ci = img_std / img_mean
     ci[np.isfinite(ci) == False] = 0.
@@ -85,9 +90,9 @@ def enhanced_lee_filter(img, window_size = 3, n_looks = 16):
     s = np.logical_and(ci > cu, ci < cmax)
     w_t[s] = np.exp((-k * (ci[s] - cu)) / (cmax - ci[s]))
         
-    img_filtered = (img_mean * w_t) + (img_mask * (1. - w_t))
+    img_filtered = (img_mean * w_t) + (data * (1. - w_t))
     
-    img_filtered = np.ma.array(img_filtered, mask = np.isnan(img_filtered))
+    img_filtered = np.ma.array(img_filtered, mask = np.logical_or(np.isnan(img_filtered), img.mask))
     
     img_filtered.data[img_filtered.mask] = 0.
     
@@ -244,7 +249,7 @@ class ALOS(object):
         mask:
     """
         
-    def __init__(self, lat, lon, year, dataloc):
+    def __init__(self, dataloc, lat, lon, year, factor = 1):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -256,10 +261,12 @@ class ALOS(object):
         assert lon < 180. or lon > -180., "Longitude must be between -180 and 180 degrees."
         assert type(year) == int, "Year must be an integer."
         assert (year >= 2007 and year <= 2010) or (year >= 2015 and year <= dt.datetime.now().year), "Years must be in the range 2007 - 2010 and 2015 - present. Your input year was %s."%str(year)
+        assert type(factor) == int or factor > 0, "Downsampling factor must be a nonzero integer."
         
         self.lat = lat
         self.lon = lon
         self.year = year
+        self.factor = factor
         
         # Deterine hemispheres
         self.hem_NS = 'S' if lat < 0 else 'N'
@@ -294,11 +301,18 @@ class ALOS(object):
         # Record the nodata value
         self.nodata = self.__getNodata()
         
+        # Get Equivalent Number of Looks
+        self.ENL = self.__getENL()
+        
+        # Update image metadata where a degree of resampling is included
+        if factor != 1:
+            self.__rebin()
+        
         # Load DN, mask, and day of year
         self.mask = self.getMask()
         #self.DN = self.getDN()
         #self.DOY = self.getDOY()
-
+        
     def __getSatellite(self):
         """
         Return the sensor for the ALOS mosaic tile
@@ -408,13 +422,21 @@ class ALOS(object):
         """
         Return the nodata value for ALOS array. Should always be 0, so this function is a placeholder should the format change.
         """
+        
         return 0
     
+    def __getENL(self)    :
+        """
+        Define equivalent number of looks. Out of the box, this is 16 for the ALOS mosaic.
+        """
+        
+        return 16
+        
     def __getGeoT(self):
         """
         Fetches a GDAL GeoTransform for tile.
         """
-        
+               
         from osgeo import gdal
          
         ds = gdal.Open(self.__getHHPath(), 0)
@@ -446,8 +468,8 @@ class ALOS(object):
         y_size = ds.RasterYSize
         
         return x_size, y_size
-    
-    def getMask(self):
+        
+    def getMask(self, masked_px_count = False):
         """
         Loads the mask into a numpy array.
         """
@@ -455,38 +477,18 @@ class ALOS(object):
         from osgeo import gdal
         
         mask_ds = gdal.Open(self.mask_path, 0)
-        mask = mask_ds.ReadAsArray()
+        mask = mask_ds.ReadAsArray() != 255
         
-        return mask != 255
+        # If resampling, this removes the mask from any pixel with > 75 % data availability.
+        if self.factor != 1 and not masked_px_count:
+            mask = skimage.measure.block_reduce(mask, (self.factor, self.factor), np.sum) > ((self.factor ** 2) * 0.25)
+     
+        # This is an option to return the sum of masked pixels. It's used to downsample the DN array.
+        if self.factor != 1 and masked_px_count:
+            mask = skimage.measure.block_reduce(mask, (self.factor, self.factor), np.sum)
+        
+        return mask
     
-    def getDOY(self):
-        """
-        Loads date values into a numpy array.
-        """
-        
-        from osgeo import gdal
-        
-        date_ds = gdal.Open(self.date_path, 0)
-        day_after_launch = date_ds.ReadAsArray()
-        
-        # Get list of unique dates in ALOS tile
-        unique_days = np.unique(day_after_launch)
-        
-        if self.satellite == 'ALOS-2':
-            launch_date = dt.datetime(2014,5,24)
-        else:
-            launch_date =  dt.datetime(2006,1,24)
-        
-        # Determine the Day of Year associated with each
-        unique_dates = [launch_date  + dt.timedelta(days=int(d)) for d in unique_days]
-        unique_doys = [(d - dt.datetime(d.year,1,1,0,0)).days + 1 for d in unique_dates]
-        
-        # Build a Day Of Year array
-        DOY = np.zeros_like(day_after_launch)
-        for day, doy in zip(unique_days, unique_doys):
-            DOY[day_after_launch == day] = doy
-                
-        return DOY
     
     def getDN(self, polarisation = 'HV'):
         """
@@ -503,8 +505,93 @@ class ALOS(object):
             DN_ds = gdal.Open(self.HH_path, 0)
 
         DN = DN_ds.ReadAsArray()
-               
+        
+        # Rebin DN with mean. This is acceptable as the DN values are on a linear scale.
+        if self.factor != 1:
+            
+            # Load the sum of DNs
+            DN_sum = skimage.measure.block_reduce(DN, (self.factor, self.factor), np.sum)
+            
+            # Amd the sum of masked pixels
+            mask_sum = self.getMask(masked_px_count = True)
+        
+            DN = np.zeros_like(DN_sum)
+            DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / ((self.factor ** 2) - mask_sum[self.mask == False])).astype(np.int)
+        
         return np.ma.array(DN, mask = self.mask)
+    
+    def __shrinkGeoT(self, factor):
+        """
+        Function to modify gdal geo_transform to output at correct resolution for downsampled products.
+        """
+        
+        geo_t = list(self.geo_t)
+                
+        geo_t[1] = 1. / int(round(self.xSize / float(factor)))
+        geo_t[-1] = (1. / int(round(self.ySize / float(factor)))) * -1
+        
+        return tuple(geo_t)
+    
+    def __rebin(self):
+        """
+        Reduce array size to a new resolution by taking mean, to increase equivalent number of looks.
+        # From https://stackoverflow.com/questions/8090229/resize-with-averaging-or-rebin-a-numpy-2d-array
+        """
+        
+        # Update geo_t
+        self.geo_t = self.__shrinkGeoT(self.factor)
+        
+        # Take the mean of X/Y resolutions in metres.
+        native_resolution = (self.xRes + self.yRes) / 2.
+
+        # Update extents to new resolution
+        new_xSize = int(round(self.xSize / float(self.factor)))
+        new_ySize = int(round(self.ySize / float(self.factor)))
+        
+        self.xRes = (self.xSize * self.xRes) / new_xSize
+        self.yRes = (self.ySize * self.yRes) / new_xSize
+        self.xSize = new_xSize
+        self.ySize = new_ySize
+                
+        # Update equivalent number of looks
+        self.ENL = self.ENL * (self.factor ** 2)
+        
+    def getDOY(self, output = False):
+        """
+        Loads date values into a numpy array.
+        """
+        
+        from osgeo import gdal
+        
+        date_ds = gdal.Open(self.date_path, 0)
+        day_after_launch = date_ds.ReadAsArray()
+        
+        # Get list of unique dates in ALOS tile
+        unique_days = np.unique(day_after_launch)
+        
+        # Days are counted from the launch date
+        if self.satellite == 'ALOS-2':
+            launch_date = dt.datetime(2014,5,24)
+        else:
+            launch_date =  dt.datetime(2006,1,24)
+        
+        # Determine the Day of Year associated with each
+        unique_dates = [launch_date  + dt.timedelta(days=int(d)) for d in unique_days]
+        unique_doys = [(d - dt.datetime(d.year,1,1,0,0)).days + 1 for d in unique_dates]
+        
+        # Build a Day Of Year array
+        DOY = np.zeros_like(day_after_launch)
+        for day, doy in zip(unique_days, unique_doys):
+            DOY[day_after_launch == day] = doy
+        
+        # If required, downsample the DOY array      
+        if self.factor != 1:
+            # Take the latest DOY where > 1 date, as there's no numpy function for mode
+            DOY = skimage.measure.block_reduce(DOY, (self.factor, self.factor), np.max)
+        
+        if output: self.__outputGeoTiff(DOY, 'DOY', dtype = gdal.GDT_Int16)
+
+        return DOY
     
     def getGamma0(self, polarisation = 'HV', units = 'natural', lee_filter = True, output = False):
         """
@@ -518,7 +605,7 @@ class ALOS(object):
         
         # Apply filter based on dB values
         if lee_filter:
-            gamma0 = enhanced_lee_filter(gamma0)
+            gamma0 = enhanced_lee_filter(gamma0, n_looks = self.ENL)
         
         # Convert to natural units where specified
         if units == 'natural': gamma0 = 10 ** (gamma0 / 10.)
@@ -540,7 +627,7 @@ class ALOS(object):
         if self.satellite == 'ALOS-1':
             AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV', lee_filter = lee_filter) - 5.967
         
-        # ALOS-1 (to calculate)
+        # ALOS-2 (to calculate)
         elif self.satellite == 'ALOS-2':
             AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV', lee_filter = lee_filter) - 5.967
             
@@ -566,7 +653,7 @@ class ALOS(object):
                
         if min_area > 0:
             
-            # Calculate number of pixels in min_area
+            # Calculate number of pixels in min_area (assuming input is given in hecatres)
             min_pixels = int(round(min_area / (self.yRes * self.xRes * 0.0001)))
             
             # Remove pixels that aren't part of a forest block of size at least min_pixels
@@ -592,23 +679,12 @@ class ALOS(object):
         # Get areas that meet that threshold
         contiguous_area, location_id = getContiguousAreas(woody_cover, True, min_pixels = min_pixels)
                 
-        if output: self.__outputGeoTiff(woody_cover * 1, 'ForestPatches', dtype = gdal.GDT_Int32)
+        if output: self.__outputGeoTiff(location_id * 1, 'ForestPatches', dtype = gdal.GDT_Int32)
         
         return location_id
     
-    def __shrinkGeoT(self, factor):
-        """
-        Function to modify gdal geo_transform to output at correct resolution for downsampled products.
-        """
-        
-        geo_t = list(self.geo_t)
-        
-        geo_t[1] = geo_t[1] * (self.xSize / factor)
-        geo_t[-1] = geo_t[-1] * (self.ySize / factor)
-        
-        return tuple(geo_t)
     
-    def calculateLDI(self, threshold, lee_filter = True, output = False):
+    def calculateLDI(self, threshold, lee_filter = True, output = False, factor = 45):
         """
         Landcover Division Index (LDI) is an indicator of the degree of habitat coherence, ranging from 0 (fully contiguous) to 1 (very fragmented).
         
@@ -623,34 +699,34 @@ class ALOS(object):
         from osgeo import gdal
         
         woody_cover = self.getWoodyCover(threshold, lee_filter = lee_filter)
-        
-        # Reduce to an image of 100 x 100 pixels
-        factor = 100
-        
-        LDI = np.zeros((factor, factor))
-        
-        for ymin in np.arange(0, self.ySize, self.ySize / factor):
-            ymax = ymin + (self.ySize / factor)
-            for xmin in np.arange(0, self.xSize, self.xSize / factor):
-                xmax = xmin + (self.xSize / factor)
                 
-                this_patch = woody_cover[ymin:ymax, xmin:xmax]
+        # Calculate output extent based on reduction factor
+        extent = int(round(((self.xSize + self.ySize) / 2.) / factor))
+        
+        LDI = np.zeros((extent, extent))
+                
+        for n, ymin in enumerate(np.linspace(0, self.ySize, extent, endpoint = False)):
+            ymax = ymin + (self.ySize / extent)
+            for m, xmin in enumerate(np.linspace(0, self.xSize, extent, endpoint = False)):
+                xmax = xmin + (self.xSize / extent)
+                
+                this_patch = woody_cover[int(round(ymin)):int(round(ymax)), int(round(xmin)):int(round(xmax))]
                 
                 # Get connected patches of forest and nonforest
-                forest_area, forest_id = getContiguousAreas(this_patch, True)
-                nonforest_area, nonforest_id = getContiguousAreas(this_patch, False)
+                _, forest_id = getContiguousAreas(this_patch, True)
+                _, nonforest_id = getContiguousAreas(this_patch, False)
                 
                 # Supply a unique ID to each habitat patch, whether forest or nonforest.
                 unique_ids = forest_id.copy()
                 unique_ids[nonforest_id != 0] = forest_id[nonforest_id != 0] + (nonforest_id[nonforest_id != 0] + np.max(forest_id) + 1)
-                                                
-                LDI[ymin / (self.ySize / factor), xmin / (self.xSize / factor)] = calculateLDI(unique_ids)
-        
+                
+                LDI[n, m] = calculateLDI(unique_ids)
+                
         if output: self.__outputGeoTiff(LDI, 'LDI', geo_t = self.__shrinkGeoT(factor), nodata = None)
         
         return LDI
     
-    def calculateTWC(self, threshold, lee_filter = True, output = False):
+    def calculateTWC(self, threshold, lee_filter = True, output = False, factor = 45):
         """
         Total woody cover (TWC) describes the propotion of woody cover in a downsampled image.
         """
@@ -659,20 +735,20 @@ class ALOS(object):
         
         woody_cover = self.getWoodyCover(threshold, lee_filter = lee_filter)
         
-        # Reduce to an image of 100 x 100 pixels
-        factor = 100
+        # Calculate output extent based on reduction factor
+        extent = int(round(((self.xSize + self.ySize) / 2.) / factor))
         
-        TWC = np.zeros((factor, factor))
-        
-        for ymin in np.arange(0, self.ySize, self.ySize / factor):
-            ymax = ymin + (self.ySize / factor)
-            for xmin in np.arange(0, self.xSize, self.xSize / factor):
-                xmax = xmin + (self.xSize / factor)
+        TWC = np.zeros((extent, extent))
+         
+        for n, ymin in enumerate(np.linspace(0, self.ySize, extent, endpoint = False)):
+            ymax = ymin + (self.ySize / extent)
+            for m, xmin in enumerate(np.linspace(0, self.xSize, extent, endpoint = False)):
+                xmax = xmin + (self.xSize / extent)
                 
-                this_patch = woody_cover[ymin:ymax, xmin:xmax]
+                this_patch = woody_cover[int(round(ymin)):int(round(ymax)), int(round(xmin)):int(round(xmax))]
                 
                 # Get proportion of woody cover in patch
-                TWC[ymin / (self.ySize / factor), xmin / (self.xSize / factor)] = float(this_patch.sum()) / ((self.ySize / factor) * (self.xSize / factor))
+                TWC[n, m] = float(this_patch.sum()) / (factor ** 2)
         
         if output: self.__outputGeoTiff(TWC, 'TWC', geo_t = self.__shrinkGeoT(factor), nodata = None)
         
@@ -699,17 +775,21 @@ class ALOS(object):
 
 if __name__ == '__main__':
     
-    data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
-    output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
-
+    #data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
+    #output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
+    
+    data_dir = '/home/sbowers3/guasha/sam_bowers/fragmentation/zambezia_data'
+    output_dir = '/home/sbowers3/guasha/sam_bowers/fragmentation/'
+    
     t1 = 2007
     t2 = 2010
 
-    lat = -19#-9#-11
-    lon = 33#34#39
+    lat = -16#-9#-11
+    lon = 36#34#39
     
-    data_t1 = ALOS(lat, lon, t1, data_dir)
-    LDI_t1 = data_t1.calculateLDI(15., output=True)
+    data_t1 = ALOS(data_dir, lat, lon, t1)
+    LDI_t1 = data_t1.calculateTWC(15., output=True, factor = 45)
+    #LDI_t1 = data_t1.calculateLDI(15., output=True)
     """
     data_t2 = ALOS(lat, lon, t2, data_dir)
     LDI_t2 = data_t2.calculateLDI(15., lee_filter = True)
