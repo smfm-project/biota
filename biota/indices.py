@@ -3,6 +3,8 @@
 import numpy as np
 import scipy.ndimage as ndimage
 
+import pdb
+
 import biota.IO
 
 def getContiguousAreas(data, value, min_pixels = 1):
@@ -20,11 +22,14 @@ def getContiguousAreas(data, value, min_pixels = 1):
     
     from scipy.ndimage.measurements import label
     
+    # If masked, we use this flag to save the mask for later.   
+    masked = np.ma.isMaskedArray(data)
+    
     # If any pixels are masked, we give them the value of the nearest valid pixel.
-    if np.ma.isMaskedArray(data):
-        if data.mask.sum() > 0:
-            ind = ndimage.distance_transform_edt(data.mask, return_distances = False, return_indices = True)
-            data = np.ma.array(data.data[tuple(ind)], mask = data.mask)
+    if masked:
+        mask = data.mask
+        ind = ndimage.distance_transform_edt(data.mask, return_distances = False, return_indices = True)
+        data = data.data[tuple(ind)]
     
     # Extract area that meets condition
     binary_array = (data == value) * 1
@@ -48,22 +53,25 @@ def getContiguousAreas(data, value, min_pixels = 1):
     # Re-number location_ids 1 to n, given that some unique value shave now been removed
     location_id_unique, location_id_indices = np.unique(location_id, return_inverse = True)
     location_id = np.arange(0, location_id_unique.shape[0], 1)[location_id_indices].reshape(data.shape)
-    
+       
     # Put mask back in if input was a masked array
-    if np.ma.isMaskedArray(data):
-        contiguous_area = np.ma.array(contiguous_area, mask = data.mask)
-        location_id = np.ma.array(location_id, mask = data.mask)
+    if masked:
+        contiguous_area = np.ma.array(contiguous_area, mask = mask)
+        location_id = np.ma.array(location_id, mask = mask)
 
     return contiguous_area, location_id
 
 
-def calculateLDI(data, threshold, output = False, shrink_factor = 45):
+def calculateLDI(data, output = False, forest_threshold = 10., shrink_factor = 45):
     """
     Landcover Division Index (LDI) is an indicator of the degree of habitat coherence, ranging from 0 (fully contiguous) to 1 (very fragmented).
     
     LDI is defined as the probability that two randomly selected points in the landscape are situated in two different patches of the habitat (Jaeger 2000; Mcgarigal 2015).
     
+    Note that fragmentation of both an undisturbed forest area and contiguous agriculture will both be low, so interpret this index carefully
+    
     Args:
+        shrink_factor = Number of pixels to build into a single patch.
     
     Returns:
         An array with LDI values.
@@ -120,7 +128,7 @@ def calculateLDI(data, threshold, output = False, shrink_factor = 45):
         
         return LDI
     
-    woody_cover = data.getWoodyCover(threshold)
+    woody_cover = data.getWoodyCover(forest_threshold = forest_threshold, min_forest_area = 0.)
         
     # Calculate output output size based on reduction shrink_factor
     output_size = int(round(((data.xSize + data.ySize) / 2.) / shrink_factor))
@@ -152,14 +160,14 @@ def calculateLDI(data, threshold, output = False, shrink_factor = 45):
     return LDI
 
 
-def calculateTWC(data, threshold, shrink_factor = 45, output = False):
+def calculateTWC(data, shrink_factor = 45, forest_threshold = 10., output = False):
     """
     Total woody cover (TWC) describes the proportion of woody cover in a downsampled image.
     """
 
     from osgeo import gdal
     
-    woody_cover = data.getWoodyCover(threshold)
+    woody_cover = data.getWoodyCover(forest_threshold = forest_threshold, min_forest_area = 0.)
         
     # Calculate output output size based on reduction shrink_factor
     output_size = int(round(((data.xSize + data.ySize) / 2.) / shrink_factor))
@@ -183,7 +191,7 @@ def calculateTWC(data, threshold, shrink_factor = 45, output = False):
     return TWC
 
 
-def calculateWCC(data_t1, data_t2, threshold, shrink_factor = 45, output = False):
+def calculateWCC(data_t1, data_t2, shrink_factor = 45, output = False):
     """
     Woody cover change (WCC) describes the loss of woody cover between two images
     """
@@ -193,8 +201,8 @@ def calculateWCC(data_t1, data_t2, threshold, shrink_factor = 45, output = False
     # TODO Test that nodata values and extents are identidical for data_t1 and data_t2
     
     # Get total woody cover for time 1 and time 2
-    TWC_t1 = calculateTWC(data_t1, threshold, shrink_factor = shrink_factor)
-    TWC_t2 = calculateTWC(data_t2, threshold, shrink_factor = shrink_factor)
+    TWC_t1 = calculateTWC(data_t1, threshold = threshold, shrink_factor = shrink_factor)
+    TWC_t2 = calculateTWC(data_t2, threshold = threshold, shrink_factor = shrink_factor)
     
     # Nodata value is -1
     WCC = np.zeros_like(TWC_t1) + data_t1.nodata

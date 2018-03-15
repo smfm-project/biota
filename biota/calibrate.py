@@ -17,11 +17,10 @@ import biota.filter
 import biota.indices
 import biota.IO
 import biota.mask
-import biota.change
 
 
 
-class ALOS(object):
+class LoadTile(object):
     """
     An ALOS mosaic tile.
     Mosaic tiles have the following properties:
@@ -33,7 +32,7 @@ class ALOS(object):
         mask:
     """
         
-    def __init__(self, dataloc, lat, lon, year, factor = 1, lee_filter = True, output_dir = os.getcwd()):
+    def __init__(self, dataloc, lat, lon, year, downsample_factor = 1, lee_filter = False, output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -45,14 +44,14 @@ class ALOS(object):
         assert lon < 180. or lon > -180., "Longitude must be between -180 and 180 degrees."
         assert type(year) == int, "Year must be an integer."
         assert (year >= 2007 and year <= 2010) or (year >= 2015 and year <= dt.datetime.now().year), "Years must be in the range 2007 - 2010 and 2015 - present. Your input year was %s."%str(year)
-        assert type(factor) == int or factor > 0, "Downsampling factor must be a nonzero integer."
+        assert downsample_factor >= 1 and type(downsample_factor) == int, "Downsampling factor must be an integer greater than 1."
         assert type(lee_filter) == bool, "Option lee_filter must be set to 'True' or 'False'."
         assert os.path.isdir(output_dir), "Specified output directory (%s) does not exist"%str(output_dir)
         
         self.lat = lat
         self.lon = lon
         self.year = year
-        self.factor = factor
+        self.downsample_factor = downsample_factor
         self.lee_filter = lee_filter
         
         # Deterine hemispheres
@@ -99,12 +98,12 @@ class ALOS(object):
         self.nLooks = self.__getnLooks()
         
         # Update image metadata where a degree of resampling is included
-        if factor != 1:
+        if self.downsample_factor != 1:
             self.__rebin()
         
         # Load DN, mask, and day of year
         self.mask = self.getMask()
-        
+                
         
     def __getSatellite(self):
         """
@@ -275,15 +274,15 @@ class ALOS(object):
         
         return round(m_per_degree / self.ySize, 3)
     
-    def shrinkGeoT(self, factor):
+    def shrinkGeoT(self, downsample_factor):
         """
         Function to modify gdal geo_transform to output at correct resolution for downsampled products.
         """
         
         geo_t = list(self.geo_t)
                 
-        geo_t[1] = 1. / int(round(self.xSize / float(factor)))
-        geo_t[-1] = (1. / int(round(self.ySize / float(factor)))) * -1
+        geo_t[1] = 1. / int(round(self.xSize / float(downsample_factor)))
+        geo_t[-1] = (1. / int(round(self.ySize / float(downsample_factor)))) * -1
         
         return tuple(geo_t)
     
@@ -294,14 +293,14 @@ class ALOS(object):
         """
         
         # Update geo_t
-        self.geo_t = self.shrinkGeoT(self.factor)
+        self.geo_t = self.shrinkGeoT(self.downsample_factor)
         
         # Take the mean of X/Y resolutions in metres.
         native_resolution = (self.xRes + self.yRes) / 2.
 
         # Update extents to new resolution
-        new_xSize = int(round(self.xSize / float(self.factor)))
-        new_ySize = int(round(self.ySize / float(self.factor)))
+        new_xSize = int(round(self.xSize / float(self.downsample_factor)))
+        new_ySize = int(round(self.ySize / float(self.downsample_factor)))
         
         self.xRes = (self.xSize * self.xRes) / new_xSize
         self.yRes = (self.ySize * self.yRes) / new_xSize
@@ -309,7 +308,7 @@ class ALOS(object):
         self.ySize = new_ySize
                 
         # Update number of looks
-        self.nLooks = self.nLooks * (self.factor ** 2)
+        self.nLooks = self.nLooks * (self.downsample_factor ** 2)
     
     def getMask(self, masked_px_count = False):
         """
@@ -319,12 +318,12 @@ class ALOS(object):
         mask = biota.IO.loadArray(self.mask_path) != 255
         
         # If resampling, this removes the mask from any pixel with > 75 % data availability.
-        if self.factor != 1 and not masked_px_count:
-            mask = skimage.measure.block_reduce(mask, (self.factor, self.factor), np.sum) > ((self.factor ** 2) * 0.25)
+        if self.downsample_factor != 1 and not masked_px_count:
+            mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum) > ((self.downsample_factor ** 2) * 0.25)
      
         # This is an option to return the sum of masked pixels. It's used to downsample the DN array.
-        if self.factor != 1 and masked_px_count:
-            mask = skimage.measure.block_reduce(mask, (self.factor, self.factor), np.sum)
+        if self.downsample_factor != 1 and masked_px_count:
+            mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum)
         
         return mask
     
@@ -360,17 +359,17 @@ class ALOS(object):
             DN = biota.IO.loadArray(self.HH_path)
                 
         # Rebin DN with mean. This is acceptable as the DN values are on a linear scale.
-        if self.factor != 1:
+        if self.downsample_factor != 1:
             
             # Load the sum of DNs
-            DN_sum = skimage.measure.block_reduce(DN, (self.factor, self.factor), np.sum)
+            DN_sum = skimage.measure.block_reduce(DN, (self.downsample_factor, self.downsample_factor), np.sum)
             
             # Amd the sum of masked pixels
             mask_sum = self.getMask(masked_px_count = True)
             
             # Divide the sum of DNs by the sum of unmasked pixels to get the mean DN value
             DN = np.zeros_like(DN_sum)
-            DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / ((self.factor ** 2) - mask_sum[self.mask == False])).astype(np.int)
+            DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / ((self.downsample_factor ** 2) - mask_sum[self.mask == False])).astype(np.int)
         
         return np.ma.array(DN, mask = self.mask)
         
@@ -400,10 +399,10 @@ class ALOS(object):
             DOY[day_after_launch == day] = doy
         
         # If required, downsample the DOY array      
-        if self.factor != 1:
+        if self.downsample_factor != 1:
             
             # Take the latest DOY where > 1 date, as there's no numpy function for mode
-            DOY = skimage.measure.block_reduce(DOY, (self.factor, self.factor), np.max)
+            DOY = skimage.measure.block_reduce(DOY, (self.downsample_factor, self.downsample_factor), np.max)
         
         if output: self.__outputGeoTiff(DOY, 'DOY', dtype = gdal.GDT_Int16)
 
@@ -457,49 +456,49 @@ class ALOS(object):
         
         return AGB
     
-    def getWoodyCover(self, threshold, min_area = 0., output = False):
+    def getWoodyCover(self, forest_threshold = 10., min_forest_area = 0., output = False):
         """
         Get woody cover, based on a threshold of AGB.
         min_area in ha
         """
-                
-        woody_cover = self.getAGB() >= float(threshold)
+        
+        woody_cover = self.getAGB() >= float(forest_threshold)
                
-        if min_area > 0:
+        if min_forest_area > 0:
             
             # Calculate number of pixels in min_area (assuming input is given in hecatres)
-            min_pixels = int(round(min_area / (self.yRes * self.xRes * 0.0001)))
+            min_pixels = int(round(min_forest_area / (self.yRes * self.xRes * 0.0001)))
             
             # Remove pixels that aren't part of a forest block of size at least min_pixels
             contiguous_area, _ = biota.indices.getContiguousAreas(woody_cover, True, min_pixels = min_pixels)
             woody_cover[contiguous_area == False] = False
         
-        woody_cover[self.mask] = self.nodata
+        woody_cover.data[self.mask] = self.nodata
         
         if output: self.__outputGeoTiff(woody_cover * 1, 'WoodyCover', dtype = gdal.GDT_Int32)
         
         return woody_cover
     
-    def getForestPatches(self, threshold, min_area = 0, output = False):
+    def getForestPatches(self, forest_threshold = 10., min_forest_area = 0., output = False):
         """
         Get numbered forest patches, based on woody cover threshold.
         """
                 
-        woody_cover = self.getWoodyCover(threshold)
+        woody_cover = self.getWoodyCover(forest_threshold = forest_threshold, min_forest_area = 0.)
         
         # Calculate number of pixels in min_area
-        min_pixels = int(round(min_area / (self.yRes * self.xRes * 0.0001)))
+        min_pixels = int(round(min_forest_area / (self.yRes * self.xRes * 0.0001)))
                 
         # Get areas that meet that threshold
         _, location_id = biota.indices.getContiguousAreas(woody_cover, True, min_pixels = min_pixels)
         
-        location_id[self.mask] = self.nodata
+        # Tidy up masked pixels     
+        location_id.data[location_id.mask] = self.nodata
         
         if output: self.__outputGeoTiff(location_id * 1, 'ForestPatches', dtype = gdal.GDT_Int32)
         
         return location_id
-        
-        
+    
     def __outputGeoTiff(self, data, output_name, dtype = 6):
         """
         Output a GeoTiff file.
@@ -510,43 +509,3 @@ class ALOS(object):
         
         # Write to disk
         biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = self.nodata)
-
-
-if __name__ == '__main__':
-    
-    data_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
-    output_dir = '/home/sbowers3/DATA/ALOS_data/ALOS_mosaic/gorongosa/'
-    
-    #data_dir = '/home/sbowers3/guasha/sam_bowers/fragmentation/zambezia_data'
-    #output_dir = '/home/sbowers3/guasha/sam_bowers/fragmentation/'
-    
-    t1 = 2007
-    t2 = 2010
-
-    lat = -18 #-16#-11
-    lon = 33 #36#39
-    
-    data_t1 = ALOS(data_dir, lat, lon, t1, lee_filter = False, output_dir = output_dir)
-    data_t2 = ALOS(data_dir, lat, lon, t2, lee_filter = False, output_dir = output_dir)
-    
-    # Build masks (with buffers)
-    lakes = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_wat/MOZ_water_areas_dcw.shp'
-    rivers = '/home/sbowers3/DATA/GIS_data/mozambique/diva/MOZ_wat/MOZ_water_lines_dcw.shp'
-        
-    data_t1.updateMask(lakes, buffer_size = 750)
-    data_t1.updateMask(rivers, buffer_size = 750)
-        
-    data_t2.updateMask(lakes, buffer_size = 750)
-    data_t2.updateMask(rivers, buffer_size = 750)
-    
-    #AGB_t1 = data_t1.getAGB(output = True)
-    #AGB_t2 = data_t2.getAGB(output = True)
-    
-    #change_metrics = biota.change.getChange(data_t1, data_t2, F_threshold = 15., C_threshold = 0.25, min_area = 2.5, output = True)
-
-
-    change_metrics_downsampled = biota.change.getChangeDownsampled(data_t1, data_t2, output = True)
-
-
-
-
