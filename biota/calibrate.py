@@ -584,9 +584,9 @@ class CalculateChange(object):
         
         return totals
     
-    def getArea(self, proportion = False):
+    def getArea(self, proportion = False, output = False):
         '''
-        Extract a change area in hectares. Proportional measures need work.
+        Extract a change area in hectares. TODO: Proportional measures need work.
         '''
         
         # Get area change in units of ha/pixel
@@ -600,9 +600,10 @@ class CalculateChange(object):
         
         return totals
     
-    def getAGB(self, proportion = False):
+    def getAGB(self, proportion = False, output = False):
         '''
-        Extract a change magnitude in tonnes carbon. Proportional measures need work.
+        Extract a change magnitude in tonnes carbon. TODO: Proportional measures need work.
+        TODO: Add these summary stats to LoadTile()?
         '''
         
         # Get AGB change in units of tC/pixel
