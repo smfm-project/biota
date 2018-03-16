@@ -317,9 +317,9 @@ class LoadTile(object):
                 
         mask = biota.IO.loadArray(self.mask_path) != 255
         
-        # If resampling, this removes the mask from any pixel with > 75 % data availability.
+        # If resampling, this removes the mask from any pixel with >= 75 % data availability.
         if self.downsample_factor != 1 and not masked_px_count:
-            mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum) > ((self.downsample_factor ** 2) * 0.25)
+            mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum) >= ((self.downsample_factor ** 2) * 0.25)
      
         # This is an option to return the sum of masked pixels. It's used to downsample the DN array.
         if self.downsample_factor != 1 and masked_px_count:
@@ -377,6 +377,8 @@ class LoadTile(object):
         """
         Loads date values into a numpy array.
         """
+        
+        from osgeo import gdal
         
         day_after_launch = biota.IO.loadArray(self.date_path)
         
@@ -462,6 +464,8 @@ class LoadTile(object):
         min_area in ha
         """
         
+        from osgeo import gdal
+        
         woody_cover = self.getAGB() >= float(forest_threshold)
                
         if min_forest_area > 0:
@@ -483,7 +487,9 @@ class LoadTile(object):
         """
         Get numbered forest patches, based on woody cover threshold.
         """
-                
+        
+        from osgeo import gdal
+        
         woody_cover = self.getWoodyCover(forest_threshold = forest_threshold, min_forest_area = 0.)
         
         # Calculate number of pixels in min_area
@@ -509,3 +515,103 @@ class LoadTile(object):
         
         # Write to disk
         biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = self.nodata)
+
+
+class CalculateChange(object):
+    """
+    Input is two mosaic tiles from LoadTile, will output change statistics.
+    """
+        
+    def __init__(self, data_t1, data_t2, forest_threshold = 10., intensity_threshold = 0.2, area_threshold = 0, output_dir = os.getcwd(), output = False):
+        '''
+        Initialise
+        '''
+        
+        # Test that inputs reasonable lats/lons/years
+        assert data_t1.lat == data_t2.lat and data_t1.lon == data_t2.lon, "Input tiles must be from the same location."
+        assert data_t1.year < data_t2.year, "Input data_t1 must be from a later year than data_t1."
+        
+        # Get basic properties
+        self.lat = data_t1.lat
+        self.lon = data_t1.lon
+        self.xRes = data_t1.xRes
+        self.yRes = data_t1.yRes
+        self.xSize = data_t1.xSize
+        self.ySize = data_t1.ySize
+        
+        # Calculate combined mask
+        self.mask = np.logical_or(data_t1.mask, data_t2.mask)
+        
+        # Change definitions
+        self.forest_threshold = forest_threshold
+        self.intensity_threshold = intensity_threshold
+        self.area_threshold = area_threshold
+        
+        self.year_t1 = data_t1.year
+        self.year_t2 = data_t2.year
+        
+        # Calculate change metrics
+        change_metrics = biota.change.getChange(data_t1, data_t2, forest_threshold = self.forest_threshold, intensity_threshold = self.intensity_threshold, area_threshold = self.area_threshold, output = output)
+        
+        self.deforestation = change_metrics['deforestation']
+        self.degradation = change_metrics['degradation']
+        self.minorloss = change_metrics['minorloss']
+        self.minorgain = change_metrics['minorgain']
+        self.growth = change_metrics['growth']
+        self.aforestation = change_metrics['aforestation']
+        self.nonforest = change_metrics['nonforest']
+        
+        # Also extract AGB_t1 and AGB_t2, and calculate an AGB change map
+        self.AGB_t1 = change_metrics['AGB_t1']
+        self.AGB_t2 = change_metrics['AGB_t2']
+        
+        self.AGB_change = change_metrics['AGB_t2'] - change_metrics['AGB_t1']
+        
+    
+    def __calculateChange(self, change_magnitude):
+        '''
+        '''
+        
+        totals = {}
+        
+        totals['deforestation'] = np.sum(self.deforestation * change_magnitude)
+        totals['degradation'] = np.sum(self.degradation * change_magnitude)
+        totals['minorloss'] = np.sum(self.minorloss * change_magnitude)
+        totals['minorgain'] = np.sum(self.minorgain * change_magnitude)
+        totals['growth'] = np.sum(self.growth * change_magnitude)
+        totals['aforestation'] = np.sum(self.aforestation * change_magnitude)
+        totals['nonforest'] = np.sum(self.nonforest * change_magnitude)
+        
+        return totals
+    
+    def getArea(self, proportion = False):
+        '''
+        Extract a change area in hectares. Proportional measures need work.
+        '''
+        
+        # Get area change in units of ha/pixel
+        change_hectares = (self.mask == False) * (self.xRes * self.yRes * 0.0001)
+         
+        totals = self.__calculateChange(change_hectares)
+        
+        if proportion: 
+            for change_type in totals:    
+                totals[change_type] = totals[change_type] / change_hectares.sum()
+        
+        return totals
+    
+    def getAGB(self, proportion = False):
+        '''
+        Extract a change magnitude in tonnes carbon. Proportional measures need work.
+        '''
+        
+        # Get AGB change in units of tC/pixel
+        change_AGB = self.AGB_change * (self.xRes * self.yRes * 0.0001)
+        
+        totals = self.__calculateChange(change_AGB)
+        
+        if proportion: 
+            for change_type in totals:    
+                totals[change_type] = totals[change_type] / self.AGB_t1.sum()
+        
+        return totals

@@ -13,43 +13,49 @@ import pdb
 
 
 
-def getChange(data_t1, data_t2, F_threshold = 10., C_threshold = 0.2, min_area = 0, output = False):
+def getChange(data_t1, data_t2, forest_threshold = 10., intensity_threshold = 0.2, area_threshold = 0, output = False):
     """
     Returns pixels that meet change detection thresholds for country.
     
     Args:
-        F_threshold = threshold above which a pixel is forest
-        C_threshold = threshold of proportional change with which to begin change detection
+        forest_threshold = threshold above which a pixel is forest
+        intensity_threshold = threshold of proportional change with which to accept a change as real
+        area_threshold
     """
     
     from osgeo import gdal
     
-    #TODO: Test that data_t1 and data_t2 are from the same location, with the same extent
-    #TODO: Combine masks from data_t1 and data_t2
-    
     AGB_t1 = data_t1.getAGB()
     AGB_t2 = data_t2.getAGB()
     
-    # Pixels that move from forest to nonforest or vice versa
-    F_NF = np.logical_and(AGB_t1 >= F_threshold, AGB_t2 < F_threshold)
-    NF_F = np.logical_and(AGB_t1 < F_threshold, AGB_t2 >= F_threshold)
-    F_F = np.logical_and(AGB_t1 >= F_threshold, AGB_t2 >= F_threshold)
-    NF_NF = np.logical_and(AGB_t1 < F_threshold, AGB_t2 < F_threshold)
+    # Combine masks, for case where they differ. TODO: Set alternative where AGB is not masked by user.
+    mask = np.logical_or(AGB_t1.mask, AGB_t2.mask)
+    AGB_t1.mask = mask
+    AGB_t2.mask = mask
     
-    # Change pixels
-    CHANGE = np.logical_or(((AGB_t1 - AGB_t2) / AGB_t1) >= C_threshold, ((AGB_t1 - AGB_t2) / AGB_t1) < (- C_threshold))
+    # Pixels that move from forest to nonforest (F_NF) or vice versa (NF_F)
+    F_NF = np.logical_and(AGB_t1 >= forest_threshold, AGB_t2 < forest_threshold)
+    NF_F = np.logical_and(AGB_t1 < forest_threshold, AGB_t2 >= forest_threshold)
+    
+    # Pixels that remain forest (F_F) or nonforest (NF_NF)
+    F_F = np.logical_and(AGB_t1 >= forest_threshold, AGB_t2 >= forest_threshold)
+    NF_NF = np.logical_and(AGB_t1 < forest_threshold, AGB_t2 < forest_threshold)
+    
+    # Get change pixels given requirements
+    CHANGE = np.logical_or(((AGB_t1 - AGB_t2) / AGB_t1) >= intensity_threshold, ((AGB_t1 - AGB_t2) / AGB_t1) < (- intensity_threshold))
     NOCHANGE = CHANGE == False
     
-    # Trajectory
+    # Trajectory (changes can be positive or negative)
     DECREASE = AGB_t2 < AGB_t1
     INCREASE = AGB_t2 >= AGB_t1
     
     # Get a minimum pixel extent. Loss/Gain events much have a spatial extent greater than min_pixels, and not occur in nonforest.
-    if min_area > 0:
+    if area_threshold > 0:
         
         pixel_area = data_t1.xRes * data_t1.yRes * 0.0001
-        min_pixels = int(round(min_area / pixel_area))
+        min_pixels = int(round(area_threshold / pixel_area))
         
+        # Get areas of change that meet minimum area requirement
         CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels)
         CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels)
         CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
@@ -58,44 +64,50 @@ def getChange(data_t1, data_t2, F_threshold = 10., C_threshold = 0.2, min_area =
     metrics = {}
     
     # These are all the possible definitions. Note: they *must* add up to one.
-    metrics['deforestation'] = (F_NF & CHANGE) * 1
-    metrics['degradation'] = (F_F & CHANGE & DECREASE) * 1
-    metrics['minorloss'] = ((F_F | F_NF) & NOCHANGE & DECREASE) * 1
-
-    metrics['aforestation'] = (NF_F & CHANGE) * 1
-    metrics['growth'] = (F_F & CHANGE & INCREASE) * 1
-    metrics['minorgain'] = ((F_F | NF_F) & NOCHANGE & INCREASE) * 1
+    metrics['deforestation'] = F_NF & CHANGE
+    metrics['degradation'] = F_F & CHANGE & DECREASE
+    metrics['minorloss'] = (F_F | F_NF) & NOCHANGE & DECREASE
+    
+    metrics['aforestation'] = NF_F & CHANGE
+    metrics['growth'] = F_F & CHANGE & INCREASE
+    metrics['minorgain'] = (F_F | NF_F) & NOCHANGE & INCREASE
             
-    metrics['notforest'] = (NF_NF * 1)
+    metrics['nonforest'] = NF_NF
     
     if output:
         output_im = np.zeros_like(AGB_t1) + data_t1.nodata
-        output_im[metrics['notforest'].data == 1] = 0
-        output_im[metrics['deforestation'].data == 1] = 1
-        output_im[metrics['degradation'].data == 1] = 2
-        output_im[metrics['minorloss'].data == 1] = 3
-        output_im[metrics['minorgain'].data == 1] = 4
-        output_im[metrics['growth'].data == 1] = 5
-        output_im[metrics['aforestation'].data == 1] = 6
+        output_im[metrics['nonforest'].data] = 0
+        output_im[metrics['deforestation'].data] = 1
+        output_im[metrics['degradation'].data] = 2
+        output_im[metrics['minorloss'].data] = 3
+        output_im[metrics['minorgain'].data] = 4
+        output_im[metrics['growth'].data] = 5
+        output_im[metrics['aforestation'].data] = 6
         
-        output_im[np.logical_or(data_t1.mask, data_t2.mask)] = data_t1.nodata
+        output_im[np.logical_or(data_t1.mask, data_t2.mask)] = 99
         
-        biota.IO.outputGeoTiff(output_im, data_t1.output_pattern%('CHANGE', '%s_%s'%(str(data_t1.year), str(data_t2.year))), data_t1.geo_t, data_t1.proj, output_dir = data_t1.output_dir, dtype = gdal.GDT_Int32, nodata = data_t1.nodata)
+        biota.IO.outputGeoTiff(output_im, data_t1.output_pattern%('CHANGE', '%s_%s'%(str(data_t1.year), str(data_t2.year))), data_t1.geo_t, data_t1.proj, output_dir = data_t1.output_dir, dtype = gdal.GDT_Byte, nodata = 99)
+    
+    # Also return AGB in metrics (with combined masks)
+    metrics['AGB_t1'] = AGB_t1
+    metrics['AGB_t2'] = AGB_t2
     
     return metrics
 
 
+
+
+"""
+
 def getChangeDownsampled(data_t1, data_t2, shrink_factor = 45, output = True):
-    """
+    '''
     Downsample getChange to address false positives.
     
     This is a palceholder for something more advanced.
-    """
+    '''
     
     print "WARNING: This function is not yet functional. Come back later!"
-    
-    from osgeo import gdal
-    
+        
     metrics = getChange(data_t1, data_t2, F_threshold = 15., C_threshold = 0.25, min_area = 2.)
     
     # Calculate output output size based on reduction shrink_factor
@@ -115,3 +127,4 @@ def getChangeDownsampled(data_t1, data_t2, shrink_factor = 45, output = True):
             change_downsampled[n,m] = aforestation.sum() - deforestation.sum()
         
     if output: biota.IO.outputGeoTiff(change_downsampled, data_t1.output_pattern%('CHANGEDOWNSAMPLED', '%s_%s'%(str(data_t1.year), str(data_t2.year))), data_t1.shrinkGeoT(shrink_factor), data_t1.proj, output_dir = data_t1.output_dir, dtype = gdal.GDT_Float32, nodata = data_t1.nodata)
+"""
