@@ -195,7 +195,7 @@ class LoadTile(object):
         Generates a filename pattern for data output.
         """
         
-        return '%s_%s%s_%s.tif'%('%s', self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3), '%s')
+        return '%s_%s%s_%s.tif'%('%s', self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3), str(self.year))
     
     def __getNodata(self):
         """
@@ -345,7 +345,6 @@ class LoadTile(object):
         
         self.mask = self.getMask()
        
-        
     def getDN(self, polarisation = 'HV'):
         """
         Loads DN (raw) values into a numpy array.
@@ -511,15 +510,15 @@ class LoadTile(object):
         """
                 
         # Generate a standardised filename
-        filename = self.output_pattern%(output_name, str(self.year))
+        filename = self.output_pattern%output_name
         
         # Write to disk
         biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = self.nodata)
 
 
-class CalculateChange(object):
+class LoadChange(object):
     """
-    Input is two mosaic tiles from LoadTile, will output change statistics.
+    Input is two mosaic tiles from LoadTile, will output maps and change statistics.
     """
         
     def __init__(self, data_t1, data_t2, forest_threshold = 10., intensity_threshold = 0.2, area_threshold = 0, output_dir = os.getcwd(), output = False):
@@ -531,6 +530,10 @@ class CalculateChange(object):
         assert data_t1.lat == data_t2.lat and data_t1.lon == data_t2.lon, "Input tiles must be from the same location."
         assert data_t1.year < data_t2.year, "Input data_t1 must be from a later year than data_t1."
         
+        
+        self.data_t1 = data_t1
+        self.data_t2 = data_t2
+        
         # Get basic properties
         self.lat = data_t1.lat
         self.lon = data_t1.lon
@@ -539,9 +542,13 @@ class CalculateChange(object):
         self.xSize = data_t1.xSize
         self.ySize = data_t1.ySize
         
-        # Calculate combined mask
-        self.mask = np.logical_or(data_t1.mask, data_t2.mask)
+        self.hem_NS = data_t1.hem_NS
+        self.hem_EW = data_t1.hem_EW
         
+        # Get GDAL geotransform and projection
+        self.geo_t = data_t1.geo_t
+        self.proj = data_t1.proj
+                
         # Change definitions
         self.forest_threshold = forest_threshold
         self.intensity_threshold = intensity_threshold
@@ -550,69 +557,192 @@ class CalculateChange(object):
         self.year_t1 = data_t1.year
         self.year_t2 = data_t2.year
         
-        # Calculate change metrics
-        change_metrics = biota.change.getChange(data_t1, data_t2, forest_threshold = self.forest_threshold, intensity_threshold = self.intensity_threshold, area_threshold = self.area_threshold, output = output)
+        self.output_dir = output_dir
+        self.output_pattern = self.__getOutputPattern()
         
-        self.deforestation = change_metrics['deforestation']
-        self.degradation = change_metrics['degradation']
-        self.minorloss = change_metrics['minorloss']
-        self.minorgain = change_metrics['minorgain']
-        self.growth = change_metrics['growth']
-        self.aforestation = change_metrics['aforestation']
-        self.nonforest = change_metrics['nonforest']
+        self.nodata = data_t1.nodata
         
-        # Also extract AGB_t1 and AGB_t2, and calculate an AGB change map
-        self.AGB_t1 = change_metrics['AGB_t1']
-        self.AGB_t2 = change_metrics['AGB_t2']
+        # Calculate combined mask
+        self.mask = self.__combineMasks()
         
-        self.AGB_change = change_metrics['AGB_t2'] - change_metrics['AGB_t1']
         
     
-    def __calculateChange(self, change_magnitude):
+    def __combineMasks(self):
         '''
         '''
         
-        totals = {}
+        return np.logical_or(self.data_t1.mask, self.data_t2.mask)
         
-        totals['deforestation'] = np.sum(self.deforestation * change_magnitude)
-        totals['degradation'] = np.sum(self.degradation * change_magnitude)
-        totals['minorloss'] = np.sum(self.minorloss * change_magnitude)
-        totals['minorgain'] = np.sum(self.minorgain * change_magnitude)
-        totals['growth'] = np.sum(self.growth * change_magnitude)
-        totals['aforestation'] = np.sum(self.aforestation * change_magnitude)
-        totals['nonforest'] = np.sum(self.nonforest * change_magnitude)
+    def __getOutputPattern(self):
+        """
+        Generates a filename pattern for data output.
+        """
         
-        return totals
+        return '%s_%s%s_%s_%s.tif'%('%s', self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3), str(self.year_t1), str(self.year_t2))
     
-    def getArea(self, proportion = False, output = False):
+    def __calculateAGB(self):
+        '''
+        Function to calculate AGB for each input tile. This function ensures the calculation is only run once, for speed.
+        '''
+        
+        if not hasattr(self, 'AGB_t1'):
+            self.AGB_t1 = self.data_t1.getAGB()
+            self.AGB_t1.mask = self.mask
+        
+        if not hasattr(self, 'AGB_t2'):
+            self.AGB_t2 = self.data_t2.getAGB()
+            self.AGB_t2.mask = self.mask
+    
+    def getAGBChange(self, output = False):
+        '''
+        '''
+        
+        from osgeo import gdal
+        
+        self.__calculateAGB()
+
+        AGB_change = self.AGB_t1 - self.AGB_t2
+                
+        if output: self.__outputGeoTiff(AGB_change, 'AGBChange', dtype = gdal.GDT_Float32)
+        
+        return AGB_change
+        
+        
+    def getChangeType(self, output = False):
+        '''
+        Returns pixels that meet change detection thresholds for country.
+        
+        Args:
+            forest_threshold = threshold above which a pixel is forest
+            intensity_threshold = threshold of proportional change with which to accept a change as real
+            area_threshold
+        '''
+        
+        from osgeo import gdal
+        
+        self.__calculateAGB()
+        
+        # Pixels that move from forest to nonforest (F_NF) or vice versa (NF_F)
+        F_NF = np.logical_and(self.AGB_t1 >= self.forest_threshold, self.AGB_t2 < self.forest_threshold)
+        NF_F = np.logical_and(self.AGB_t1 < self.forest_threshold, self.AGB_t2 >= self.forest_threshold)
+        
+        # Pixels that remain forest (F_F) or nonforest (NF_NF)
+        F_F = np.logical_and(self.AGB_t1 >= self.forest_threshold, self.AGB_t2 >= self.forest_threshold)
+        NF_NF = np.logical_and(self.AGB_t1 < self.forest_threshold, self.AGB_t2 < self.forest_threshold)
+        
+        # Get change pixels given requirements
+        CHANGE = np.logical_or((self.getAGBChange() / self.AGB_t1) >= self.intensity_threshold, (self.getAGBChange() / self.AGB_t1) < (- self.intensity_threshold))
+        NOCHANGE = CHANGE == False
+        
+        # Trajectory (changes can be positive or negative)
+        DECREASE = self.AGB_t2 < self.AGB_t1
+        INCREASE = self.AGB_t2 >= self.AGB_t1
+        
+        # Get a minimum pixel extent. Loss/Gain events much have a spatial extent greater than min_pixels, and not occur in nonforest.
+        if self.area_threshold > 0:
+            
+            pixel_area = self.xRes * self.yRes * 0.0001
+            min_pixels = int(round(self.area_threshold / pixel_area))
+            
+            # Get areas of change that meet minimum area requirement
+            CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels)
+            CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels)
+            CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
+            NOCHANGE = CHANGE == False
+        
+        change_type = {}
+        
+        # These are all the possible definitions. Note: they *must* add up to one.
+        change_type['deforestation'] = F_NF & CHANGE
+        change_type['degradation'] = F_F & CHANGE & DECREASE
+        change_type['minorloss'] = (F_F | F_NF) & NOCHANGE & DECREASE
+        
+        change_type['aforestation'] = NF_F & CHANGE
+        change_type['growth'] = F_F & CHANGE & INCREASE
+        change_type['minorgain'] = (F_F | NF_F) & NOCHANGE & INCREASE
+                
+        change_type['nonforest'] = NF_NF
+        
+        if output:
+            
+            # Image with coded change values
+            output_im = np.zeros_like(AGB_t1, dtype = np.int8) + 99
+            
+            output_im[change_type['nonforest'].data] = 0
+            output_im[change_type['deforestation'].data] = 1
+            output_im[change_type['degradation'].data] = 2
+            output_im[change_type['minorloss'].data] = 3
+            output_im[change_type['minorgain'].data] = 4
+            output_im[change_type['growth'].data] = 5
+            output_im[change_type['aforestation'].data] = 6
+            
+            output_im[self.mask] = 99
+            
+            self.__outputGeoTiff(output_im, 'ChangeType', dtype = gdal.GDT_Byte)
+                
+        return change_type
+        
+    
+    def __sumChange(self, change_type, scale = 1):
+        '''
+        Function for scaling then summing and optionally scaling change statistics.
+        '''
+        
+        return {k: np.sum(v * scale) for k, v in change_type.items()}
+    
+    def getAreaTotal(self, proportion = False, output = False):
         '''
         Extract a change area in hectares. TODO: Proportional measures need work.
         '''
         
+        # Classify change type
+        change_type = self.getChangeType()
+                        
         # Get area change in units of ha/pixel
         change_hectares = (self.mask == False) * (self.xRes * self.yRes * 0.0001)
-         
-        totals = self.__calculateChange(change_hectares)
+        
+        totals = self.__sumChange(change_type, scale = change_hectares)
         
         if proportion: 
-            for change_type in totals:    
-                totals[change_type] = totals[change_type] / change_hectares.sum()
+            for change in totals:
+                totals[change] = totals[change] / change_hectares.sum()
         
         return totals
     
-    def getAGB(self, proportion = False, output = False):
+    
+    def getAGBTotal(self, proportion = False, output = False):
         '''
         Extract a change magnitude in tonnes carbon. TODO: Proportional measures need work.
         TODO: Add these summary stats to LoadTile()?
         '''
         
-        # Get AGB change in units of tC/pixel
-        change_AGB = self.AGB_change * (self.xRes * self.yRes * 0.0001)
+        # Calculate AGB of each scene
+        self.__calculateAGB()
         
-        totals = self.__calculateChange(change_AGB)
+        # Classify change type
+        change_type = self.getChangeType()
+        
+        # Get AGB change in units of tC/pixel
+        change_AGB = self.getAGBChange() * (self.xRes * self.yRes * 0.0001)
+        
+        totals = self.__sumChange(change_type, scale = change_AGB)
         
         if proportion: 
             for change_type in totals:    
                 totals[change_type] = totals[change_type] / self.AGB_t1.sum()
         
         return totals
+    
+    
+    def __outputGeoTiff(self, data, output_name, dtype = 6):
+        """
+        Output a GeoTiff file.
+        """
+                
+        # Generate a standardised filename
+        filename = self.output_pattern%output_name
+        
+        # Write to disk
+        biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = self.nodata)
+        
+        
