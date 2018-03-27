@@ -1,9 +1,13 @@
 
+import itertools
+import math
 import numpy as np
+import os
 from PIL import Image, ImageDraw
 import scipy.ndimage as ndimage
 
 import pdb
+
 
 def dilateMask(mask, buffer_px):
     """
@@ -107,13 +111,25 @@ def getField(shp, field):
     
     assert 'field_n' in locals(), "Attribute %s not found in shapefile."%str(field)
     
+    # Extract data type from shapefile. Interprets N (int), F (float) and C (string), sets others to string.
+    this_dtype = sf.fields[1:][field_n][1]
+    
+    if this_dtype == 'N':
+        dtype = np.int
+    elif this_dtype == 'F':
+        dtype = np.float32
+    elif this_dtype == 'C':
+        dtype = np.str
+    else:
+        dtype = np.str
+    
     value_out = []
     
     # Cycle through records:
     for s in sf.records():
         value_out.append(s[field_n])
-    
-    return np.array(value_out)
+        
+    return np.array(value_out, dtype = dtype)
 
 
 def getBBox(shp, field, value):
@@ -148,7 +164,7 @@ def getBBox(shp, field, value):
 
 
 
-def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None):
+def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None, location_id = False):
     """
     Rasterize points, lines or polygons from a shapefile to match ALOS mosaic data.
         
@@ -156,9 +172,12 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None):
         data: An ALOS object
         shp: Path to a shapefile consisting of points, lines and/or polygons. This does not have to be in the same projection as ds
         buffer_size: Optionally specify a buffer to add around features of the shapefile, in meters.
+        field: Optionally specify a single shapefile field to extract (you must also specify its value)
+        value: Optionally specify a single shapefile field value to extract (you must also specify the field name)
+        location_id: Set True to return a unique ID for each masked shape. Note: This is not zero indexed, but starts at 1.
 
     Returns:
-        A numpy array with a boolean mask delineating locations inside (True) and outside (False) the shapefile [and optional buffer].
+        A numpy array with a boolean (or integer) mask delineating locations inside and outside the shapefile and optional buffer.
     """
     
     import shapefile
@@ -195,7 +214,7 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None):
         shapes = shapes[getField(shp, field) == value]
             
     # For each shape in shapefile...
-    for shape in shapes:
+    for n, shape in enumerate(shapes):
                 
         # Get shape bounding box
         sxmin, symin, sxmax, symax = shape.bbox
@@ -235,15 +254,15 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None):
             # Draw the mask for this shape...
             # if a point...
             if shape.shapeType == 0:
-                rasterize.point(pixels, 1)
+                rasterize.point(pixels, n+1)
 
             # a line...
             elif shape.shapeType == 3:
-                rasterize.line(pixels, 1)
+                rasterize.line(pixels, n+1)
   
             # or a polygon.
             elif shape.shapeType == 5:  
-                rasterize.polygon(pixels, 1)
+                rasterize.polygon(pixels, n+1)
         
     #Converts a Python Imaging Library array to a gdalnumeric image.
     mask = gdalnumeric.fromstring(rasterPoly.tobytes(),dtype=np.uint32)
@@ -256,15 +275,16 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None):
     # Get rid of image buffer
     mask = mask[buffer_px:mask.shape[0]-buffer_px, buffer_px:mask.shape[1]-buffer_px]
     
-    # Get rid of record numbers
-    mask = mask > 0
+    if location_id == False:
+        # Get rid of record numbers
+        mask = mask > 0
     
     return mask
 
 
 
 
-def getTilesInShapefile(shp):
+def getTilesInShapefile(shp, field = None, value = None):
     """
     Identify all the ALOS tiles that fall within a shapefile.
     
@@ -274,16 +294,24 @@ def getTilesInShapefile(shp):
     Returns:
         The lat/lon indicators of which ALOS tiles are covered by the shapefile
     """
-    
+
     import shapefile
+
+    assert np.logical_or(np.logical_and(field == None, value == None), np.logical_and(field != None, value != None)), "If specifying field or value, both must be defined. At present, field = %s and value = %s"%(str(field), str(value))    
     
     # The shapefile may not have the same CRS as ALOS mosaic data, so this will generate a function to reproject points.    
     coordTransform = _coordinateTransformer(shp)
     
     lats, lons = [], []
     tiles_to_include = set([])
+    
+    # Get shapes
+    shapes = np.array(shapefile.Reader(shp).shapes())
+    
+    if field != None:    
+        shapes = shapes[getField(shp, field) == value]
         
-    for shape in shapefile.Reader(shp).shapes():
+    for shape in shapes:
         
         # Get the bbox for each shape in the shapefile
         lonmin, latmin, lonmax, latmax = shape.bbox
