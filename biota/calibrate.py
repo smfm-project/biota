@@ -11,11 +11,6 @@ import biota.mask
 
 import pdb
 
-
-data_dir = '/home/sbowers3/guasha/sam_bowers/for_Geoff/alos_data/'
-shp = '/home/sbowers3/guasha/sam_bowers/for_Geoff/fwmxshpfile/scolel_te_plots_w_buffer_final.shp'
-shp = '/home/sbowers3/DATA/biota_test/plots/MOZ_plots.shp'
-
 def extractGamma0(shp, plot_field, agb_field, data_example, verbose = False, units = 'natural'):
     '''
     Extract gamma0 from ALOS tiles.
