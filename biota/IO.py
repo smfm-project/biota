@@ -2,6 +2,7 @@
 import numpy as np
 import os
 
+import pdb
 
 def loadArray(filepath):
     """
@@ -69,14 +70,14 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
     from osgeo import osr, gdal
     
     # Get full output path
-    output_path = '%s/%s.tif'%(os.path.abspath(output_dir), filename.rstrip('.tif'))
+    output_path = '%s/%s.tif'%(os.path.abspath(os.path.expanduser(output_dir)), filename.rstrip('.tif'))
     
     # Save image with georeference info
     driver = gdal.GetDriverByName('GTiff')
     ds = driver.Create(output_path, data.shape[0], data.shape[1], 1, dtype, options = ['COMPRESS=LZW'])
     ds.SetGeoTransform(geo_t)
     ds.SetProjection(proj)
-    
+        
     # Set nodata
     if nodata != None:
         ds.GetRasterBand(1).SetNoDataValue(nodata)

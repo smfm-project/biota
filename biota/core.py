@@ -36,11 +36,13 @@ class LoadTile(object):
         mask:
     """
         
-    def __init__(self, dataloc, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, output_dir = os.getcwd()):
+    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
-               
+        
+        from osgeo import gdal
+        
         # Test that inputs are of reasonable lats/lons/years
         assert type(lat) == int, "Latitude must be an integer."
         assert lat < 90. or lat > -90., "Latitude must be between -90 and 90 degrees."
@@ -50,7 +52,8 @@ class LoadTile(object):
         assert (year >= 2007 and year <= 2010) or (year >= 2015 and year <= dt.datetime.now().year), "Years must be in the range 2007 - 2010 and 2015 - present. Your input year was %s."%str(year)
         assert downsample_factor >= 1 and type(downsample_factor) == int, "Downsampling factor must be an integer greater than 1."
         assert type(lee_filter) == bool, "Option lee_filter must be set to 'True' or 'False'."
-        assert os.path.isdir(output_dir), "Specified output directory (%s) does not exist"%str(output_dir)
+        assert os.path.isdir(os.path.expanduser(data_dir)), "Specified data directory (%s) does not exist"%str(data_dir)
+        assert os.path.isdir(os.path.expanduser(output_dir)), "Specified output directory (%s) does not exist"%str(output_dir)
         assert type(forest_threshold) == float or type(forest_threshold) == int, "Forest threshold must be numeric."
         assert type(area_threshold) == float or type(area_threshold) == int, "Area threshold must be numeric."
         
@@ -70,7 +73,7 @@ class LoadTile(object):
         self.satellite = self.__getSatellite()
         
         # Determine filenames
-        self.dataloc = dataloc.rstrip('/')
+        self.data_dir = os.path.expanduser(data_dir.rstrip('/'))
         self.directory = self.__getDirectory()
         self.HH_path = self.__getHHPath()
         self.HV_path = self.__getHVPath()
@@ -100,7 +103,8 @@ class LoadTile(object):
         self.yRes = self.__getYRes()
         
         # Record the nodata value
-        self.nodata = self.__getNodata()
+        self.nodata = self.__getNodata()        
+        self.nodata_byte = self.__getNodata(dtype = gdal.GDT_Byte)
         
         # Get Equivalent Number of Looks
         self.nLooks = self.__getnLooks()
@@ -130,6 +134,8 @@ class LoadTile(object):
         Return the directory containing ALOS data for a given lat/lon. Assumes its distributed as a 5x5 tile at present.
         """
         
+        assert os.path.isdir(self.data_dir), "Data location must be a directory."
+        
         # Calculate the hemisphere and lat/lon of the 5x5 tile
         lat_dir = self.lat + (5 - self.lat) % 5
         lon_dir = self.lon - (self.lon % 5)
@@ -148,7 +154,7 @@ class LoadTile(object):
             name_pattern += '_F02DAR'
         
         # Generate directory name
-        directory = self.dataloc + '/' + name_pattern%(lat_dir, lon_dir, str(self.year)[-2:], 'MOS') + '/'
+        directory = self.data_dir + '/' + name_pattern%(lat_dir, lon_dir, str(self.year)[-2:], 'MOS') + '/'
         
         return directory
     
@@ -203,14 +209,22 @@ class LoadTile(object):
         Generates a filename pattern for data output.
         """
         
-        return '%s_%s%s_%s.tif'%('%s', self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3), str(self.year))
+        return '%s_%s_%s%s.tif'%('%s', str(self.year), self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3))
     
-    def __getNodata(self):
+    def __getNodata(self, dtype = 6):
         """
-        Return the nodata value for ALOS array. Should always be 0, so this function is a placeholder should the format change.
+        Return nodata values
         """
         
-        return 999999
+        from osgeo import gdal
+        
+        # Generate a nodata value
+        if dtype == gdal.GDT_Byte:
+            nodata = 99
+        else:
+            nodata = 999999
+        
+        return nodata
     
     def __getnLooks(self)    :
         """
@@ -413,7 +427,7 @@ class LoadTile(object):
             # Take the latest DOY where > 1 date, as there's no numpy function for mode
             DOY = skimage.measure.block_reduce(DOY, (self.downsample_factor, self.downsample_factor), np.max)
         
-        if output: self.__outputGeoTiff(DOY, 'DOY', dtype = gdal.GDT_Int16)
+        if output: self.__outputGeoTiff(DOY, 'DOY', dtype = gdal.GDT_Int32)
 
         return DOY
     
@@ -491,14 +505,20 @@ class LoadTile(object):
                 
                 # Remove pixels that aren't part of a forest block of size at least min_pixels
                 contiguous_area, _ = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
-                WoodyCover[contiguous_area == False] = False
+                
+                WoodyCover.data[contiguous_area == False] = False
             
-            WoodyCover.data[self.mask] = self.nodata
+            WoodyCover.data[self.mask] = False
             
             # Save output to class
             self.WoodyCover = WoodyCover
         
-        if output: self.__outputGeoTiff(WoodyCover * 1, 'WoodyCover', dtype = gdal.GDT_Int32)
+        if output: 
+            
+            # Convert data to integer type for output
+            WoodyCover_out = WoodyCover.astype(np.uint8)
+            
+            self.__outputGeoTiff(WoodyCover_out, 'WoodyCover', dtype = gdal.GDT_Byte)
         
         return self.WoodyCover
     
@@ -516,7 +536,7 @@ class LoadTile(object):
             
             # Calculate number of pixels in min_area
             min_pixels = int(round(self.area_threshold / (self.yRes * self.xRes * 0.0001)))
-                    
+            
             # Get areas that meet that threshold
             _, location_id = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
             
@@ -534,12 +554,17 @@ class LoadTile(object):
         """
         Output a GeoTiff file.
         """
-                
+        
+        from osgeo import gdal
+        
         # Generate a standardised filename
         filename = self.output_pattern%output_name
         
+        # Generate a nodata value appropriate for datatype
+        nodata = self.__getNodata(dtype = dtype)
+        
         # Write to disk
-        biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = self.nodata)
+        biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = nodata)
 
 
 class LoadChange(object):
@@ -551,6 +576,8 @@ class LoadChange(object):
         '''
         Initialise
         '''
+        
+        from osgeo import gdal
         
         self.data_t1 = data_t1
         self.data_t2 = data_t2
@@ -583,7 +610,9 @@ class LoadChange(object):
         self.output_dir = output_dir
         self.output_pattern = self.__getOutputPattern()
         
+        # Nodata currently hardwired to 99
         self.nodata = data_t1.nodata
+        self.nodata_byte = data_t1.nodata_byte
         
         # Calculate combined mask
         self.mask = self.__combineMasks()
@@ -602,6 +631,7 @@ class LoadChange(object):
         assert self.data_t1.geo_t == self.data_t2.geo_t, "Input tiles do not have the same geo_transform."
         assert self.data_t1.forest_threshold == self.data_t2.forest_threshold, "'forest_threshold' must be identical for both input tiles."
         assert self.data_t1.area_threshold == self.data_t2.area_threshold, "'area_threshold' must be identical for both input tiles."
+        assert self.data_t1.downsample_factor == self.data_t2.downsample_factor, "'downsample_facor' must be identical for both input tiles."
 
 
     def __combineMasks(self):
@@ -616,8 +646,22 @@ class LoadChange(object):
         Generates a filename pattern for data output.
         """
         
-        return '%s_%s%s_%s_%s.tif'%('%s', self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3), str(self.year_t1), str(self.year_t2))
-    
+        return '%s_%s_%s_%s%s.tif'%('%s', str(self.year_t1), str(self.year_t2), self.hem_NS + str(abs(self.lat)).zfill(2), self.hem_EW + str(abs(self.lon)).zfill(3))
+
+    def __getNodata(self, dtype = 6):
+        """
+        Return nodata values
+        """
+        
+        from osgeo import gdal
+        
+        # Generate a nodata value
+        if dtype == gdal.GDT_Byte:
+            nodata = 99
+        else:
+            nodata = 999999
+        
+        return nodata    
             
     def getAGBChange(self, output = False):
         '''
@@ -705,7 +749,8 @@ class LoadChange(object):
             output_im[self.ChangeType['growth'].data] = 5
             output_im[self.ChangeType['aforestation'].data] = 6
             
-            output_im[self.mask] = 99
+            # Keep things tidy
+            output_im[self.mask] = self.nodata_byte
             
             self.__outputGeoTiff(output_im, 'ChangeType', dtype = gdal.GDT_Byte)
                 
@@ -769,7 +814,9 @@ class LoadChange(object):
         # Generate a standardised filename
         filename = self.output_pattern%output_name
         
+        nodata = self.__getNodata(dtype = dtype)
+        
         # Write to disk
-        biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = self.nodata)
+        biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = nodata)
         
         
