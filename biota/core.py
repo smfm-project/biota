@@ -361,7 +361,7 @@ class LoadTile(object):
         if file_type == 'shp':
         
             # Rasterize the shapefile, optionally with a buffer
-            mask = biota.mask.rasterizeShapefile(self, filename, buffer_size = buffer_size)
+            mask = biota.mask.maskShapefile(self, filename, buffer_size = buffer_size)
         
         if file_type in ['tif', 'tiff']:
             

@@ -164,12 +164,12 @@ def getBBox(shp, field, value):
     return bbox
     
 
-def maskRaster(data, tif, classes = [], buffer_size = 0.):
+def maskRaster(tile, tif, classes = [], buffer_size = 0.):
     '''
     Extract a mask from a GeoTiff based on specified classes
     
     Args:
-        data: An ALOS object
+        tile: An ALOS tile (biota.LoadTile())
         tif: A GeoTiff file, with integer values
         classes: A list of values to add to be masked
         buffer_size: Optionally specify a buffer to add around maked pixels, in meters.
@@ -188,12 +188,12 @@ def maskRaster(data, tif, classes = [], buffer_size = 0.):
     
     # Create output file matching ALOS tile
     gdal_driver = gdal.GetDriverByName('MEM')
-    ds_dest = gdal_driver.Create('', data.ySize, data.xSize, 1, 3)
-    ds_dest.SetGeoTransform(data.geo_t)
-    ds_dest.SetProjection(data.proj)
+    ds_dest = gdal_driver.Create('', tile.ySize, tile.xSize, 1, 3)
+    ds_dest.SetGeoTransform(tile.geo_t)
+    ds_dest.SetProjection(tile.proj)
        
     # Reproject input GeoTiff to match the ALOS tile
-    gdal.ReprojectImage(ds_source, ds_dest, proj_source, data.proj, gdal.GRA_NearestNeighbour)
+    gdal.ReprojectImage(ds_source, ds_dest, proj_source, tile.proj, gdal.GRA_NearestNeighbour)
     
     # Load resampled image into memory
     tif_resampled = ds_dest.GetRasterBand(1).ReadAsArray()
@@ -204,7 +204,7 @@ def maskRaster(data, tif, classes = [], buffer_size = 0.):
     if buffer_size > 0.:
         
         # Determine the size of the buffer in pixels
-        buffer_px = int(buffer_size / ((data.xRes + data.yRes) / 2.))
+        buffer_px = int(buffer_size / ((tile.xRes + tile.yRes) / 2.))
         
         # Dilate the mask
         mask = dilateMask(mask, buffer_px)
@@ -212,12 +212,12 @@ def maskRaster(data, tif, classes = [], buffer_size = 0.):
     return mask
 
 
-def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None, location_id = False):
+def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, location_id = False):
     """
     Rasterize points, lines or polygons from a shapefile to match ALOS mosaic data.
         
     Args:
-        data: An ALOS object
+        tile: An ALOS tile (biota.LoadTile())
         shp: Path to a shapefile consisting of points, lines and/or polygons. This does not have to be in the same projection as ds
         buffer_size: Optionally specify a buffer to add around features of the shapefile, in meters.
         field: Optionally specify a single shapefile field to extract (you must also specify its value)
@@ -232,19 +232,15 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None, 
     from osgeo import gdalnumeric
     
     assert np.logical_or(np.logical_and(field == None, value == None), np.logical_and(field != None, value != None)), "If specifying field or value, both must be defined. At present, field = %s and value = %s"%(str(field), str(value))
-    
-    # Determine size of buffer to place around lines/polygons
-    #buffer_px = int(round(buffer_size / data.geo_t[1]))
-    
+        
     # Determine the size of the buffer in degrees
-    buffer_size_degrees = buffer_size / (((data.xRes * data.xSize) + (data.yRes * data.ySize)) / 2.)
+    buffer_size_degrees = buffer_size / (((tile.xRes * tile.xSize) + (tile.yRes * tile.ySize)) / 2.)
     
     # Determine size of buffer to place around lines/polygons
-    #buffer_px = int(round(buffer_size / ((data.xRes + data.yRes) / 2.)))
-    buffer_px = int(round(buffer_size_degrees / data.geo_t[1]))
+    buffer_px = int(round(buffer_size_degrees / tile.geo_t[1]))
     
     # Create output image. Add a buffer around the image array equal to the maxiumum dilation size. This means that features just outside ALOS tile extent can contribute to dilated mask.
-    rasterPoly = Image.new("I", (data.ySize + (buffer_px * 2), data.xSize + (buffer_px * 2)), 0)
+    rasterPoly = Image.new("I", (tile.ySize + (buffer_px * 2), tile.xSize + (buffer_px * 2)), 0)
     rasterize = ImageDraw.Draw(rasterPoly)
     
     # The shapefile may not have the same CRS as ALOS mosaic data, so this will generate a function to reproject points.
@@ -272,10 +268,10 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None, 
         sxmax, symax, z = coordTransform.TransformPoint(sxmax, symax)
         
         # Go to the next record if out of bounds
-        if sxmax < data.geo_t[0] - buffer_size_degrees: continue
-        if sxmin > data.geo_t[0] + (data.geo_t[1] * data.ySize) + buffer_size_degrees: continue
-        if symax < data.geo_t[3] + (data.geo_t[5] * data.xSize) + buffer_size_degrees: continue
-        if symin > data.geo_t[3] - buffer_size_degrees: continue
+        if sxmax < tile.geo_t[0] - buffer_size_degrees: continue
+        if sxmin > tile.geo_t[0] + (tile.geo_t[1] * tile.ySize) + buffer_size_degrees: continue
+        if symax < tile.geo_t[3] + (tile.geo_t[5] * tile.xSize) + buffer_size_degrees: continue
+        if symin > tile.geo_t[3] - buffer_size_degrees: continue
         
         #Separate polygons with list indices
         n_parts = len(shape.parts) #Number of parts
@@ -297,7 +293,7 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None, 
                 lon, lat, z = coordTransform.TransformPoint(p[0], p[1])
 
                 # Then convert map to pixel coordinates using geo transform
-                pixels.append(_world2Pixel(data.geo_t, lon, lat, buffer_size = buffer_size_degrees))
+                pixels.append(_world2Pixel(tile.geo_t, lon, lat, buffer_size = buffer_size_degrees))
 
             # Draw the mask for this shape...
             # if a point...

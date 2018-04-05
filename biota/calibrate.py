@@ -11,7 +11,9 @@ import biota.mask
 
 import pdb
 
-def extractGamma0(shp, plot_field, agb_field, data_example, verbose = False, units = 'natural'):
+
+
+def extractGamma0(shp, plot_field, agb_field, tile_example, verbose = False, units = 'natural'):
     '''
     Extract gamma0 from ALOS tiles.
     
@@ -19,17 +21,17 @@ def extractGamma0(shp, plot_field, agb_field, data_example, verbose = False, uni
         shp: A shapefile containing plot data
         plot_field: The shapefile field containing plot names
         agb_field: The shapefile field containing AGB estimates
-        data_example: An exemplar ALOS tile (from LoadTile()) which contains information on the processing chain.
+        tile_example: An exemplar ALOS tile (from LoadTile()) which contains information on the processing chain.
         #TODO: year?
     Returns:
         A dictionary containing plot names, AGB and gamma0 values
     '''
     
     # Use example data to get processing steps
-    downsample_factor = data_example.downsample_factor
-    lee_filter = data_example.lee_filter
-    year = data_example.year
-    dataloc = data_example.dataloc
+    downsample_factor = tile_example.downsample_factor
+    lee_filter = tile_example.lee_filter
+    year = tile_example.year
+    dataloc = tile_example.dataloc
     
     # Extract relevant info from shapefile
     plot_names = biota.mask.getField(shp, plot_field) 
@@ -54,21 +56,21 @@ def extractGamma0(shp, plot_field, agb_field, data_example, verbose = False, uni
         if verbose: print 'Doing lat: %s, lon: %s'%(str(lat), str(lon))
         
         # Load tile
-        data = biota.LoadTile(dataloc, lat, lon, year, downsample_factor = downsample_factor, lee_filter = lee_filter)
+        tile = biota.LoadTile(dataloc, lat, lon, year, downsample_factor = downsample_factor, lee_filter = lee_filter)
         
         # Get backscatter (both polarisations) and DOY
-        data_gamma0_hv = data.getGamma0(polarisation = 'HV', units = units)
-        data_gamma0_hh = data.getGamma0(polarisation = 'HH', units = units)
-        data_doy = data.getDOY()
+        data_gamma0_hv = tile.getGamma0(polarisation = 'HV', units = units)
+        data_gamma0_hh = tile.getGamma0(polarisation = 'HH', units = units)
+        data_doy = tile.getDOY()
         
         # Mask out each plot
-        plot_mask = biota.mask.rasterizeShapefile(data, shp, location_id = True, buffer_size = 0.)
+        plot_mask = biota.mask.rasterizeShapefile(tile, shp, location_id = True, buffer_size = 0.)
         
         # Extract values for each plot
         for n in np.unique(plot_mask[plot_mask != 0]):
             
-            # Get mask for plot and data
-            this_mask = np.logical_and(plot_mask == n, data.mask == False)
+            # Get mask for plot and tile
+            this_mask = np.logical_and(plot_mask == n, tile.mask == False)
             
             # Add metrics to output array
             gamma0_hv[n-1] = np.mean(data_gamma0_hv[this_mask])

@@ -89,8 +89,6 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
         ds.GetRasterBand(1).WriteArray(data)
     ds = None
     
-    
-    
 
 
 def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vmax = 60., cmap = 'YlGn'):
@@ -102,10 +100,10 @@ def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vm
         
     im = ax.imshow(data, vmin = vmin, vmax = vmax, cmap = cmap, interpolation = 'nearest')
     
-    ax.set_xticks(np.arange(0,4501,450))
-    ax.set_yticks(np.arange(0,4501,450))
-    ax.set_xticklabels(np.arange(lon, lon + 1.01, 0.1))
+    ax.set_yticks(np.arange(0,data.shape[0],data.shape[0]/10))
+    ax.set_xticks(np.arange(0,data.shape[1],data.shape[1]/10))
     ax.set_yticklabels(np.arange(lat, lat - 1.01, - 0.1))
+    ax.set_xticklabels(np.arange(lon, lon + 1.01, 0.1))
     ax.tick_params(labelsize = 5)
     ax.set_xlabel('Longitude', fontsize = 5)
     ax.set_ylabel('Latitude', fontsize = 5)
@@ -116,65 +114,60 @@ def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vm
     cbar.set_label(cbartitle, fontsize = 7)
     
 
-def overviewFigure(data_t1, data_t2, output_dir = os.getcwd(), output_name = 'overview'):
-    """overviewFigure(data_t1, data_t2, t1, t2, geo_t, output_dir = os.getcwd())
-    
-    Generate an overview image showing biomass and proportional biomass change for the tile being processed.
+def overviewFigure(tile_change, output = False, show = True):
+    """
+    Generate an overview image showing biomass and proportional biomass change for an ALOS tile.
     
     Args:
-        data_t1:
-        data_t2: 
-        output_name: Optionally specify an output string to precede output file. Defaults to 'overview'.
+        tile_change: An ALOS change object from biota.LoadChange()
     """
     
     import matplotlib.pyplot as plt
     
-    assert data_t1.geo_t == data_t2.geo_t, "The two ALOS tiles must be from the same location."
+    # Load AGB, and update masks to exclude areas outisde forest definition. Good for visualisation
+    AGB_t1 = tile_change.data_t1.getAGB()
+    AGB_t2 = tile_change.data_t2.getAGB()
     
-    # Get upper left longitude and latitude from GeoMatrix
-    lon, lat = data_t1.lat, data_t1.lon
-    
-    # Update masks to exclude areas outisde forest definition. Good for visualisation
-    AGB_t1 = data_t1.getAGB()
-    AGB_t2 = data_t2.getAGB()
-    
+    # Mask out areas < 10 tC/ha
     AGB_t1 = np.ma.array(AGB_t1, mask = np.logical_or(AGB_t1.mask, AGB_t1 < 10.))
     AGB_t2 = np.ma.array(AGB_t2, mask = np.logical_or(AGB_t2.mask, AGB_t1 < 10.))
         
-    AGB_change = (AGB_t2 - AGB_t1) / (data_t2.year - data_t1.year) # tC/ha/yr
+    AGB_change = AGB_t2 - AGB_t1
 
-    AGB_pcChange = 100 * (AGB_change / AGB_t1) # %/yr
+    AGB_pcChange = 100 * (AGB_change / AGB_t1) # %
     
     fig = plt.figure(figsize = (7, 6))
     
     # Plot a map of AGB at t1
     ax1 = fig.add_subplot(2, 2, 1)
-    _buildMap(fig, ax1, AGB_t1, lat, lon, title = 'AGB %s'%str(t1), cbartitle = 'tC/ha')
+    _buildMap(fig, ax1, AGB_t1, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t1), cbartitle = 'tC/ha')
     
     # Plot a map of AGB at t2
     ax2 = fig.add_subplot(2, 2, 2)
-    _buildMap(fig, ax2, AGB_t2, lat, lon, title = 'AGB %s'%str(t2), cbartitle = 'tC/ha')    
+    _buildMap(fig, ax2, AGB_t2, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t2), cbartitle = 'tC/ha')    
     
     # Plot a map of absolute AGB change   
     ax3 = fig.add_subplot(2, 2, 3)
-    _buildMap(fig, ax3, AGB_change, lat, lon, title = 'AGB change (%s-%s)'%(str(t1),str(t2)),
-              cbartitle = 'tC/ha/yr', vmin = -10., vmax = 10., cmap = 'RdBu')    
+    _buildMap(fig, ax3, AGB_change, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
+              cbartitle = 'tC/ha', vmin = -10., vmax = 10., cmap = 'RdBu')    
     
     # Plot a map of % AGB change
     ax4 = fig.add_subplot(2, 2, 4)
-    _buildMap(fig, ax4, AGB_pcChange, lat, lon, title = 'AGB change (%s-%s)'%(str(t1),str(t2)),
-              cbartitle = '%/yr', vmin = -50., vmax = 50., cmap = 'RdBu')    
+    _buildMap(fig, ax4, AGB_pcChange, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
+              cbartitle = '%', vmin = -50., vmax = 50., cmap = 'RdBu')    
     
     plt.tight_layout()
     
-    # Determine filename
-    hem_NS = 'S' if lat < 0 else 'N'
-    hem_EW = 'W' if lon < 0 else 'E'
+    if output:
+        output_pattern = tile_change.output_pattern.replace('.tif','.png')
     
-    output_path = '%s/%s_%s%s.png'%(output_dir, output_name, data_t1.hem_NS + str(abs(lat)).zfill(2), 
-                                    data_t1.hem_EW + str(abs(lon)).zfill(3))
+        output_path = os.path.abspath(os.path.expanduser('%s/%s'%(tile_change.output_dir, output_pattern%('OverviewFigure'))))
     
-    plt.savefig(output_path, dpi = 150)
+        plt.savefig(output_path, dpi = 150)
+    
+    if show:
+        plt.show()
+        
     plt.close()
 
 
