@@ -6,6 +6,8 @@ import os
 from PIL import Image, ImageDraw
 import scipy.ndimage as ndimage
 
+import biota.IO
+
 import pdb
 
 
@@ -162,6 +164,52 @@ def getBBox(shp, field, value):
     return bbox
     
 
+def maskRaster(data, tif, classes = [], buffer_size = 0.):
+    '''
+    Extract a mask from a GeoTiff based on specified classes
+    
+    Args:
+        data: An ALOS object
+        tif: A GeoTiff file, with integer values
+        classes: A list of values to add to be masked
+        buffer_size: Optionally specify a buffer to add around maked pixels, in meters.
+    
+    Returns:
+        A numpy array with a boolean mask
+    '''
+    
+    from osgeo import gdal
+    
+    assert tif.rstrip('/').split('.')[-1] == 'tif' or tif.rstrip('/').split('.')[-1] == 'tiff', "tif input must be a GeoTiff file."
+    
+    # Open GeoTiff and get metadata
+    ds_source = gdal.Open(tif)
+    proj_source = biota.IO.loadProjection(tif)
+    
+    # Create output file matching ALOS tile
+    gdal_driver = gdal.GetDriverByName('MEM')
+    ds_dest = gdal_driver.Create('', data.ySize, data.xSize, 1, 3)
+    ds_dest.SetGeoTransform(data.geo_t)
+    ds_dest.SetProjection(data.proj)
+       
+    # Reproject input GeoTiff to match the ALOS tile
+    gdal.ReprojectImage(ds_source, ds_dest, proj_source, data.proj, gdal.GRA_NearestNeighbour)
+    
+    # Load resampled image into memory
+    tif_resampled = ds_dest.GetRasterBand(1).ReadAsArray()
+        
+    # Identify pixels that are classes to be masked
+    mask = np.in1d(tif_resampled, classes).reshape(tif_resampled.shape)
+            
+    if buffer_size > 0.:
+        
+        # Determine the size of the buffer in pixels
+        buffer_px = int(buffer_size / ((data.xRes + data.yRes) / 2.))
+        
+        # Dilate the mask
+        mask = dilateMask(mask, buffer_px)
+    
+    return mask
 
 
 def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None, location_id = False):
@@ -280,8 +328,6 @@ def rasterizeShapefile(data, shp, buffer_size = 0., field = None, value = None, 
         mask = mask > 0
     
     return mask
-
-
 
 
 def getTilesInShapefile(shp, field = None, value = None):

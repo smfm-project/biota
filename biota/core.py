@@ -349,17 +349,30 @@ class LoadTile(object):
         
         return mask
     
-    def updateMask(self, shp, buffer_size = 0.):
+    def updateMask(self, filename, buffer_size = 0., classes = []):
         """
-        Function to add further pixels to mask based on shapefiles and buffers.
+        Function to add further pixels to mask based on a shapefile or GeoTiff file, with optional buffers.
         """
         
-        # Rasterize the shapefile, optionally with a buffer
-        shp_mask = biota.mask.rasterizeShapefile(self, shp, buffer_size = buffer_size)
+        file_type = filename.split('/')[-1].split('.')[-1]
         
-        # Add the rasterized shapefile to the mask
-        self.mask = np.logical_or(self.mask, shp_mask)     
+        assert file_type in ['shp', 'tif', 'tiff'], "Input filename must be a GeoTiff or a shapefile."
+                
+        if file_type == 'shp':
         
+            # Rasterize the shapefile, optionally with a buffer
+            mask = biota.mask.rasterizeShapefile(self, filename, buffer_size = buffer_size)
+        
+        if file_type in ['tif', 'tiff']:
+            
+            assert classes != [], "If adding a GeoTiff file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
+            
+            # Resample and extract values from shapefile, optionally with a buffer
+            mask = biota.mask.maskRaster(self, filename, classes = classes, buffer_size = buffer_size)
+        
+        # Add the new raster masks to the existing mask
+        self.mask = np.logical_or(self.mask, mask)
+    
     def resetMask(self):
         """
         Function to reset a mask to the default.
