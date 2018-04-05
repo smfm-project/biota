@@ -747,31 +747,33 @@ class LoadChange(object):
             change_type['degradation'] = F_F & CHANGE & DECREASE
             change_type['minorloss'] = (F_F | F_NF) & NOCHANGE & DECREASE
             
-            change_type['aforestation'] = NF_F & CHANGE
+            change_type['afforestation'] = NF_F & CHANGE
             change_type['growth'] = F_F & CHANGE & INCREASE
             change_type['minorgain'] = (F_F | NF_F) & NOCHANGE & INCREASE
                     
             change_type['nonforest'] = NF_NF
             
-            self.ChangeType = change_type
+            # Also produce a c for output
+            change_code = np.zeros((self.ySize, self.xSize), dtype = np.int8) + self.nodata_byte
             
-        if output:
-            
-            # Image with coded change values
-            output_im = np.zeros((self.ySize, self.xSize), dtype = np.int8) + 99
-            
-            output_im[self.ChangeType['nonforest'].data] = 0
-            output_im[self.ChangeType['deforestation'].data] = 1
-            output_im[self.ChangeType['degradation'].data] = 2
-            output_im[self.ChangeType['minorloss'].data] = 3
-            output_im[self.ChangeType['minorgain'].data] = 4
-            output_im[self.ChangeType['growth'].data] = 5
-            output_im[self.ChangeType['aforestation'].data] = 6
+            change_code[change_type['nonforest'].data] = 0
+            change_code[change_type['deforestation'].data] = 1
+            change_code[change_type['degradation'].data] = 2
+            change_code[change_type['minorloss'].data] = 3
+            change_code[change_type['minorgain'].data] = 4
+            change_code[change_type['growth'].data] = 5
+            change_code[change_type['afforestation'].data] = 6
             
             # Keep things tidy
-            output_im[self.mask] = self.nodata_byte
+            change_code[self.mask] = self.nodata_byte
             
-            self.__outputGeoTiff(output_im, 'ChangeType', dtype = gdal.GDT_Byte)
+            # Save to class
+            self.ChangeType = change_type
+            self.ChangeCode = change_code
+            
+        if output:
+                        
+            self.__outputGeoTiff(self.changeCode, 'ChangeType', dtype = gdal.GDT_Byte)
                 
         return self.ChangeType
         

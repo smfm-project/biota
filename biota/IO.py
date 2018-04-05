@@ -91,22 +91,22 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
     
 
 
-def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vmax = 60., cmap = 'YlGn'):
+def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vmax = 40., cmap = 'YlGn'):
     """
     Builds a standardised map for overviewFigure().
     """
     
     import matplotlib.pyplot as plt
         
-    im = ax.imshow(data, vmin = vmin, vmax = vmax, cmap = cmap, interpolation = 'nearest')
+    im = ax.imshow(data, vmin = vmin, vmax = vmax, cmap = cmap, interpolation = 'nearest', aspect = 'auto')
     
     ax.set_yticks(np.arange(0,data.shape[0],data.shape[0]/10))
     ax.set_xticks(np.arange(0,data.shape[1],data.shape[1]/10))
     ax.set_yticklabels(np.arange(lat, lat - 1.01, - 0.1))
     ax.set_xticklabels(np.arange(lon, lon + 1.01, 0.1))
     ax.tick_params(labelsize = 5)
-    ax.set_xlabel('Longitude', fontsize = 5)
     ax.set_ylabel('Latitude', fontsize = 5)
+    ax.set_xlabel('Longitude', fontsize = 5)
     ax.set_title(title, fontsize = 8)
     
     cbar = fig.colorbar(im, ax = ax, fraction = 0.046, pad = 0.04)
@@ -120,6 +120,8 @@ def overviewFigure(tile_change, output = False, show = True):
     
     Args:
         tile_change: An ALOS change object from biota.LoadChange()
+        output: Set to True to output a summary png image
+        show: Set to True to display image on screen
     """
     
     import matplotlib.pyplot as plt
@@ -133,8 +135,15 @@ def overviewFigure(tile_change, output = False, show = True):
     AGB_t2 = np.ma.array(AGB_t2, mask = np.logical_or(AGB_t2.mask, AGB_t1 < 10.))
         
     AGB_change = AGB_t2 - AGB_t1
-
-    AGB_pcChange = 100 * (AGB_change / AGB_t1) # %
+    #AGB_pcChange = 100 * (AGB_change / AGB_t1) # %
+    
+    # Calculate change type
+    change_type = tile_change.getChangeType()
+    change_code = tile_change.ChangeCode
+    
+    # Set minor loss and minor gain to nodata
+    change_code[np.logical_or(change_code == 3, change_code == 4)] = 0
+    change_code.mask[change_type.data == 0] = True
     
     fig = plt.figure(figsize = (7, 6))
     
@@ -143,21 +152,22 @@ def overviewFigure(tile_change, output = False, show = True):
     _buildMap(fig, ax1, AGB_t1, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t1), cbartitle = 'tC/ha')
     
     # Plot a map of AGB at t2
-    ax2 = fig.add_subplot(2, 2, 2)
+    ax2 = fig.add_subplot(2, 2, 2, sharex = ax1, sharey = ax1)
     _buildMap(fig, ax2, AGB_t2, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t2), cbartitle = 'tC/ha')    
     
     # Plot a map of absolute AGB change   
-    ax3 = fig.add_subplot(2, 2, 3)
+    ax3 = fig.add_subplot(2, 2, 3, sharex = ax1, sharey = ax1)
     _buildMap(fig, ax3, AGB_change, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
               cbartitle = 'tC/ha', vmin = -10., vmax = 10., cmap = 'RdBu')    
     
     # Plot a map of % AGB change
-    ax4 = fig.add_subplot(2, 2, 4)
-    _buildMap(fig, ax4, AGB_pcChange, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
-              cbartitle = '%', vmin = -50., vmax = 50., cmap = 'RdBu')    
+    ax4 = fig.add_subplot(2, 2, 4, sharex = ax1, sharey = ax1)
+    _buildMap(fig, ax4, change_code, tile_change.lat, tile_change.lon, title = 'Change type (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
+              vmin = 1., vmax = 6., cmap = 'Spectral')
     
     plt.tight_layout()
     
+    # Output image to png
     if output:
         output_pattern = tile_change.output_pattern.replace('.tif','.png')
     
@@ -165,6 +175,7 @@ def overviewFigure(tile_change, output = False, show = True):
     
         plt.savefig(output_path, dpi = 150)
     
+    # Display image on screen
     if show:
         plt.show()
         
