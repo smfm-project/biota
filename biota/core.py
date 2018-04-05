@@ -585,7 +585,7 @@ class LoadChange(object):
     Input is two mosaic tiles from LoadTile, will output maps and change statistics.
     """
         
-    def __init__(self, data_t1, data_t2, change_intensity_threshold = 0.2, change_area_threshold = 0, output_dir = os.getcwd(), output = False):
+    def __init__(self, data_t1, data_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, output_dir = os.getcwd(), output = False):
         '''
         Initialise
         '''
@@ -615,6 +615,7 @@ class LoadChange(object):
                 
         # Change definitions
         self.change_intensity_threshold = change_intensity_threshold
+        self.change_magnitude_threshold = change_magnitude_threshold
         self.change_area_threshold = change_area_threshold
         
         self.year_t1 = data_t1.year
@@ -716,7 +717,12 @@ class LoadChange(object):
             NF_NF = np.logical_and(self.data_t1.getWoodyCover() == False, self.data_t2.getWoodyCover() == False)
             
             # Get pixels of change greater than intensity threshold
-            CHANGE = np.logical_or((self.getAGBChange() / self.data_t1.getAGB()) >= self.change_intensity_threshold, (self.getAGBChange() / self.data_t1.getAGB()) < (- self.change_intensity_threshold))
+            CHANGE_INTENSITY = np.logical_or((self.getAGBChange() / self.data_t1.getAGB()) >= self.change_intensity_threshold, (self.getAGBChange() / self.data_t1.getAGB()) < (- self.change_intensity_threshold))
+            
+            # Get pixels of change greater than magnitude threshold
+            CHANGE_MAGNITUDE = np.logical_or(self.getAGBChange() >= self.change_magnitude_threshold, self.getAGBChange() < (- self.change_magnitude_threshold))
+            
+            CHANGE = np.logical_and(CHANGE_INTENSITY, CHANGE_MAGNITUDE) 
             NOCHANGE = CHANGE == False
             
             # Trajectory (changes can be positive or negative)
