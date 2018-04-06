@@ -91,7 +91,7 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
     
 
 
-def _buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = 10., vmax = 40., cmap = 'YlGn'):
+def buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = None, vmax = None, cmap = None):
     """
     Builds a standardised map for overviewFigure().
     """
@@ -149,20 +149,20 @@ def overviewFigure(tile_change, output = False, show = True):
     
     # Plot a map of AGB at t1
     ax1 = fig.add_subplot(2, 2, 1)
-    _buildMap(fig, ax1, AGB_t1, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t1), cbartitle = 'tC/ha')
+    buildMap(fig, ax1, AGB_t1, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t1), cbartitle = 'tC/ha', vmin = 10., vmax = 40., cmap = 'YlGn')
     
     # Plot a map of AGB at t2
     ax2 = fig.add_subplot(2, 2, 2, sharex = ax1, sharey = ax1)
-    _buildMap(fig, ax2, AGB_t2, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t2), cbartitle = 'tC/ha')    
+    buildMap(fig, ax2, AGB_t2, tile_change.lat, tile_change.lon, title = 'AGB %s'%str(tile_change.year_t2), cbartitle = 'tC/ha', vmin = 10., vmax = 40., cmap = 'YlGn')    
     
     # Plot a map of absolute AGB change   
     ax3 = fig.add_subplot(2, 2, 3, sharex = ax1, sharey = ax1)
-    _buildMap(fig, ax3, AGB_change, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
+    buildMap(fig, ax3, AGB_change, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
               cbartitle = 'tC/ha', vmin = -10., vmax = 10., cmap = 'RdBu')    
     
     # Plot a map of % AGB change
     ax4 = fig.add_subplot(2, 2, 4, sharex = ax1, sharey = ax1)
-    _buildMap(fig, ax4, change_code, tile_change.lat, tile_change.lon, title = 'Change type (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
+    buildMap(fig, ax4, change_code, tile_change.lat, tile_change.lon, title = 'Change type (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
               vmin = 1., vmax = 6., cmap = 'Spectral')
     
     plt.tight_layout()

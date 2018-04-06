@@ -332,7 +332,7 @@ class LoadTile(object):
         # Update number of looks
         self.nLooks = self.nLooks * (self.downsample_factor ** 2)
     
-    def getMask(self, masked_px_count = False):
+    def getMask(self, masked_px_count = False, output = False, show = False):
         """
         Loads the mask into a numpy array.
         """
@@ -347,9 +347,13 @@ class LoadTile(object):
         if self.downsample_factor != 1 and masked_px_count:
             mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum)
         
+        if output: self.__outputGeoTiff(mask, 'Mask', dtype = gdal.GDT_Byte)
+        
+        if show: self.__showArray(mask, title = 'Mask', cmap = 'coolwarm')
+        
         return mask
     
-    def updateMask(self, filename, buffer_size = 0., classes = []):
+    def updateMask(self, filename, buffer_size = 0., classes = [], output = False, show = False):
         """
         Function to add further pixels to mask based on a shapefile or GeoTiff file, with optional buffers.
         """
@@ -373,6 +377,10 @@ class LoadTile(object):
         # Add the new raster masks to the existing mask
         self.mask = np.logical_or(self.mask, mask)
     
+        if output: self.__outputGeoTiff(self.mask, 'Mask', dtype = gdal.GDT_Byte)
+        
+        if show: self.__showArray(self.mask, title = 'Mask', cmap = 'coolwarm')
+        
     def resetMask(self):
         """
         Function to reset a mask to the default.
@@ -380,7 +388,7 @@ class LoadTile(object):
         
         self.mask = self.getMask()
        
-    def getDN(self, polarisation = 'HV'):
+    def getDN(self, polarisation = 'HV', output = False, show = False):
         """
         Loads DN (raw) values into a numpy array.
         """
@@ -405,9 +413,13 @@ class LoadTile(object):
             DN = np.zeros_like(DN_sum)
             DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / ((self.downsample_factor ** 2) - mask_sum[self.mask == False])).astype(np.int)
         
+        if output: self.__outputGeoTiff(DN, 'DN', dtype = gdal.GDT_Int32)
+        
+        if show: self.__showArray(DN, title = 'DN', cbartitle = 'Digital Number', cmap = 'Spectral_r')
+
         return np.ma.array(DN, mask = self.mask)
         
-    def getDOY(self, output = False):
+    def getDOY(self, output = False, show = False):
         """
         Loads date values into a numpy array.
         """
@@ -441,16 +453,19 @@ class LoadTile(object):
             DOY = skimage.measure.block_reduce(DOY, (self.downsample_factor, self.downsample_factor), np.max)
         
         if output: self.__outputGeoTiff(DOY, 'DOY', dtype = gdal.GDT_Int32)
-
+        
+        if show: self.__showArray(DOY, title = 'DOY', cbartitle = 'Day', vmin = 0, vmax = 366, cmap = 'Spectral')
+        
         return DOY
     
-    def getGamma0(self, polarisation = 'HV', units = 'natural', output = False):
+    def getGamma0(self, polarisation = 'HV', units = 'natural', output = False, show = False):
         """
         Calibrates data to gamma0 (baskscatter) in decibels or natural units.
         """
         
         assert units == 'natural' or units == 'decibels', "Units must be 'natural' or 'decibels'. You input %s."%units
-        
+        assert polarisation == 'HH' or polarisation == 'HV', "Polarisation must be 'HH' or 'HV'. You input %s."%polarisation
+
         # Calibrate DN to units of dB
         gamma0 = 10 * np.ma.log10(self.getDN(polarisation = polarisation).astype(np.float) ** 2) - 83. # units = decibels
         
@@ -466,9 +481,18 @@ class LoadTile(object):
         
         if output: self.__outputGeoTiff(gamma0, 'Gamma0')
         
+        if show:
+            # Different display settings depending on options
+            if polarisation == 'HH' and units == 'natural': vmin, vmax = 0, 0.15
+            if polarisation == 'HV' and units == 'natural': vmin, vmax = 0, 0.06
+            if polarisation == 'HH' and units == 'decibels': vmin, vmax = -15, -5
+            if polarisation == 'HV' and units == 'decibels': vmin, vmax = -20, -10
+            
+            self.__showArray(gamma0, title = 'Gamma0 %s'%polarisation, cbartitle = units, vmin = vmin, vmax = vmax, cmap = 'Greys_r')
+
         return gamma0
     
-    def getAGB(self, output = False):
+    def getAGB(self, output = False, show = False):
         """
         Calibrates data to aboveground biomass (AGB).
         Placeholder equation to calibrate backscatter (gamma0) to AGB (tC/ha).
@@ -496,9 +520,11 @@ class LoadTile(object):
         
         if output: self.__outputGeoTiff(self.AGB, 'AGB')
         
+        if show: self.__showArray(self.AGB, title = 'AGB', cbartitle = 'tC/ha', vmin = 0, vmax = 40, cmap = 'YlGn')
+        
         return self.AGB
 
-    def getWoodyCover(self, output = False):
+    def getWoodyCover(self, output = False, show = False):
         """
         Get woody cover, based on a threshold of AGB.
         min_area in ha
@@ -529,13 +555,15 @@ class LoadTile(object):
         if output: 
             
             # Convert data to integer type for output
-            WoodyCover_out = WoodyCover.astype(np.uint8)
+            WoodyCover_out = self.WoodyCover.astype(np.uint8)
             
             self.__outputGeoTiff(WoodyCover_out, 'WoodyCover', dtype = gdal.GDT_Byte)
         
+        if show: self.__showArray(self.WoodyCover, title = 'Woody Cover', cbartitle = '', vmin = 0, vmax = 1, cmap = 'summer_r')
+        
         return self.WoodyCover
     
-    def getForestPatches(self, output = False):
+    def getForestPatches(self, output = False, show = False):
         """
         Get numbered forest patches, based on woody cover threshold.
         """
@@ -551,15 +579,17 @@ class LoadTile(object):
             min_pixels = int(round(self.area_threshold / (self.yRes * self.xRes * 0.0001)))
             
             # Get areas that meet that threshold
-            _, location_id = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
+            _, ForestPatches = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
             
             # Tidy up masked pixels     
-            location_id.data[location_id.mask] = self.nodata
+            ForestPatches.data[ForestPatches.mask] = self.nodata
             
             # Save output to class
-            self.ForestPatches = location_id
+            self.ForestPatches = ForestPatches
         
-        if output: self.__outputGeoTiff(location_id * 1, 'ForestPatches', dtype = gdal.GDT_Int32)
+        if output: self.__outputGeoTiff(self.ForestPatches * 1, 'ForestPatches', dtype = gdal.GDT_Int32)
+        
+        if show: self.__showArray(self.ForestPatches, title = 'Forest patches', cbartitle = 'Patch ID', cmap = 'Spectral')
         
         return self.ForestPatches
     
@@ -578,7 +608,23 @@ class LoadTile(object):
         
         # Write to disk
         biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = nodata)
-
+    
+    def __showArray(self, data, title = '', cbartitle = '', vmin = None, vmax = None, cmap = None):
+        '''
+        '''
+        
+        # Set up new figure
+        fig = plt.figure(figsize = (7, 6))
+        ax = fig.add_subplot(1, 1, 1)
+        
+        # Plot map
+        biota.IO.buildMap(fig, ax, data, self.lat, self.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
+        
+        # Show in window
+        plt.show()
+        
+        # Tidy up
+        plt.close()
 
 class LoadChange(object):
     """
@@ -677,7 +723,7 @@ class LoadChange(object):
         
         return nodata    
             
-    def getAGBChange(self, output = False):
+    def getAGBChange(self, output = False, show = False):
         '''
         '''
         
@@ -688,12 +734,14 @@ class LoadChange(object):
             
             self.AGB_change = AGB_change
             
-        if output: self.__outputGeoTiff(AGB_change, 'AGBChange')
+        if output: self.__outputGeoTiff(self.AGB_change, 'AGBChange')
+        
+        if show: self.__showArray(self.AGB_change, title = 'AGB Change', cbartitle = 'tC/ha', vmin = -10, vmax = 10, cmap = 'RdBu')
         
         return self.AGB_change
         
         
-    def getChangeType(self, output = False):
+    def getChangeType(self, output = False, show = False):
         '''
         Returns pixels that meet change detection thresholds for country.
         
@@ -771,9 +819,13 @@ class LoadChange(object):
             self.ChangeType = change_type
             self.ChangeCode = change_code
             
-        if output:
-                        
-            self.__outputGeoTiff(self.changeCode, 'ChangeType', dtype = gdal.GDT_Byte)
+        if output: self.__outputGeoTiff(self.ChangeCode, 'ChangeType', dtype = gdal.GDT_Byte)
+        
+        if show:
+            # Hide minor gain, minor loss and nonforest in display output
+            change_code_display = np.ma.array(self.ChangeCode, mask = np.zeros_like(self.ChangeCode, dtype = np.bool))
+            change_code_display.mask[np.logical_or(np.logical_or(change_code_display == 3, change_code_display == 4), change_code_display == 0)] = True
+            self.__showArray(change_code_display, title = 'Change type', cbartitle = 'Class', vmin = 1, vmax = 6, cmap = 'Spectral')
                 
         return self.ChangeType
         
@@ -802,6 +854,8 @@ class LoadChange(object):
             for change in totals:
                 totals[change] = totals[change] / change_hectares.sum()
         
+        if output: print 'TODO'
+                
         return totals
     
     
@@ -824,6 +878,8 @@ class LoadChange(object):
             for change_type in totals:    
                 totals[change_type] = totals[change_type] / (self.data_t1.getAGB() * self.xRes * self.yRes * 0.0001).sum()
         
+        if output: print 'TODO'
+                
         return totals
     
     
@@ -839,5 +895,22 @@ class LoadChange(object):
         
         # Write to disk
         biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = nodata)
+    
+    def __showArray(self, data, title = '', cbartitle = '', vmin = None, vmax = None, cmap = None):
+        '''
+        '''
         
+        # Set up new figure
+        fig = plt.figure(figsize = (7, 6))
+        ax = fig.add_subplot(1, 1, 1)
+        
+        # Plot map
+        biota.IO.buildMap(fig, ax, data, self.lat, self.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
+        
+        # Show in window
+        plt.show()
+        
+        # Tidy up
+        plt.close()
+
         
