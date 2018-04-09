@@ -182,6 +182,9 @@ def maskRaster(tile, tif, classes = [], buffer_size = 0.):
     
     assert tif.rstrip('/').split('.')[-1] == 'tif' or tif.rstrip('/').split('.')[-1] == 'tiff', "tif input must be a GeoTiff file."
     
+    tif = os.path.expanduser(tif)
+    assert os.path.exists(tif), "GeoTiff file %s does not exist in the file system."%tif
+    
     # Open GeoTiff and get metadata
     ds_source = gdal.Open(tif)
     proj_source = biota.IO.loadProjection(tif)
@@ -232,7 +235,10 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
     from osgeo import gdalnumeric
     
     assert np.logical_or(np.logical_and(field == None, value == None), np.logical_and(field != None, value != None)), "If specifying field or value, both must be defined. At present, field = %s and value = %s"%(str(field), str(value))
-        
+    
+    shp = os.path.expanduser(shp)
+    assert os.path.exists(shp), "Shapefile %s does not exist in the file system."%shp
+    
     # Determine the size of the buffer in degrees
     buffer_size_degrees = buffer_size / (((tile.xRes * tile.xSize) + (tile.yRes * tile.ySize)) / 2.)
     
