@@ -473,11 +473,13 @@ class LoadTile(object):
         if self.lee_filter:
             gamma0 = biota.filter.enhanced_lee_filter(gamma0, n_looks = self.nLooks)
         
+        
         # Convert to natural units where specified
         if units == 'natural': gamma0 = 10 ** (gamma0 / 10.)
         
         # Keep masked values tidy
         gamma0.data[self.mask] = self.nodata
+        gamma0.mask = self.mask
         
         if output: self.__outputGeoTiff(gamma0, 'Gamma0')
         
@@ -548,6 +550,7 @@ class LoadTile(object):
                 WoodyCover.data[contiguous_area == False] = False
             
             WoodyCover.data[self.mask] = False
+            WoodyCover.mask = self.mask
             
             # Save output to class
             self.WoodyCover = WoodyCover
@@ -582,7 +585,7 @@ class LoadTile(object):
             _, ForestPatches = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
             
             # Tidy up masked pixels     
-            ForestPatches.data[ForestPatches.mask] = self.nodata
+            ForestPatches.data[np.ma.getmaskarray(ForestPatches)] = self.nodata
             
             # Save output to class
             self.ForestPatches = ForestPatches

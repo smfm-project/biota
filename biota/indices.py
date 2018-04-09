@@ -28,8 +28,8 @@ def getContiguousAreas(data, value, min_pixels = 1):
     
     # If any pixels are masked, we give them the value of the nearest valid pixel.
     if masked:
-        mask = data.mask
-        ind = ndimage.distance_transform_edt(data.mask, return_distances = False, return_indices = True)
+        mask = np.ma.getmaskarray(data)
+        ind = ndimage.distance_transform_edt(mask, return_distances = False, return_indices = True)
         data = data.data[tuple(ind)]
     
     # Extract area that meets condition
@@ -160,13 +160,13 @@ def calculateLDI(tile, patch_size = 'auto', output = False, show = False):
         Calculates an index of landscape heterogeneity
         '''
         
-        # If masked array, separate mask
+        # If masked array, separate data from mask
         if np.ma.isMaskedArray(unique_ids):
-            mask = unique_ids.mask
-            unique_ids = unique_ids.data
+            mask = np.ma.getmask(unique_ids)
+            unique_ids = np.ma.getdata(unique_ids)
         else:
             mask = np.zeros_like(unique_ids, dtype=np.bool)
-        
+                
         # Calculate LDI
         selection_1 = np.zeros_like(unique_ids,dtype = np.bool).ravel()
         selection_2 = np.zeros_like(unique_ids,dtype = np.bool).ravel()
@@ -228,7 +228,7 @@ def calculateLDI(tile, patch_size = 'auto', output = False, show = False):
         #  If at least 50 % of data is present...
         if this_patch.mask.sum() <= ((patch_size ** 2) * 0.5):
             
-            # Compute LDI
+            ## Compute LDI
             LDI.data[n, m] = _computeLDI(unique_ids)
             
         else:
@@ -262,7 +262,7 @@ def calculateLDIChange(tile_change, patch_size = 'auto', output = False, show = 
     from osgeo import gdal
     
     patch_size = _calculatePatchSize(tile_change, patch_size)
-
+    
     LDI_t1 = calculateLDI(tile_change.tile_t1, patch_size = patch_size)
     LDI_t2 = calculateLDI(tile_change.tile_t2, patch_size = patch_size)
     
