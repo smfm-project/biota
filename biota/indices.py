@@ -236,7 +236,7 @@ def calculateLDI(tile, patch_size = 'auto', output = False, show = False):
             LDI.mask[n, m] = True
             
     # Output GeoTiff
-    if output: biota.IO.outputGeoTiff(LDI, tile.output_pattern%'LDI', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Byte, nodata = tile.nodata_byte)
+    if output: biota.IO.outputGeoTiff(LDI, tile.output_pattern%'LDI', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
     
     # Display
     if show: biota.IO.showFigure(tile, LDI, title = 'LDI', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'Oranges')
@@ -244,12 +244,46 @@ def calculateLDI(tile, patch_size = 'auto', output = False, show = False):
     return LDI
 
 
+def calculateLDIChange(tile_change, patch_size = 'auto', output = False, show = False):
+    """
+    Landcover Division Index (LDI) is an indicator of the degree of habitat coherence, ranging from 0 (fully contiguous) to 1 (very fragmented).
+    
+    This function calculates the change in LDI between two tiles.
+    
+        Args:
+        tile_change: An ALOS change object from biota.LoadChange()
+        patch_size: Number of pixels to build into a single patch. Set to 'auto' for an approx 100 x 100 output image
+    
+    Returns:
+        An numpy array.
+        
+    """
+    
+    from osgeo import gdal
+    
+    patch_size = _calculatePatchSize(tile_change, patch_size)
+
+    LDI_t1 = calculateLDI(tile_change.tile_t1, patch_size = patch_size)
+    LDI_t2 = calculateLDI(tile_change.tile_t2, patch_size = patch_size)
+    
+    LDI_change = LDI_t2 - LDI_t1
+    
+    # Output GeoTiff
+    if output: biota.IO.outputGeoTiff(LDI_change, tile_change.output_pattern%'LDIChange', tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
+    
+    # Display
+    if show: biota.IO.showFigure(tile_change, LDI_change, title = 'LDI Change', cbartitle = '%', vmin = -25, vmax = 25, cmap = 'RdBu_r')
+    
+    return LDI_change
+            
+            
+
 def calculateTWC(tile, patch_size = 'auto', output = False, show = False):
     """
     Total woody cover (TWC) describes the proportion of woody cover in a downsampled image.
     
     Args:
-        tile: An ALOS tile from niota.LoadTile()
+        tile: An ALOS tile from biota.LoadTile()
         patch_size: Number of pixels to build into a single patch. Set to 'auto' for an approx 100 x 100 output image
     
     Returns:
@@ -282,7 +316,7 @@ def calculateTWC(tile, patch_size = 'auto', output = False, show = False):
             TWC.mask[n, m] = True
    
     # Output GeoTiff
-    if output: biota.IO.outputGeoTiff(TWC, tile.output_pattern%'TWC', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Byte, nodata = tile.nodata_byte)
+    if output: biota.IO.outputGeoTiff(TWC, tile.output_pattern%'TWC', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
     
     # Display
     if show: biota.IO.showFigure(tile, TWC, title = 'TWC', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'YlGn')
@@ -359,40 +393,10 @@ def calculateProportionalChange(tile_change, change_type, patch_size = 'auto', o
             change_downsampled.mask[n, m] = True
 
     # Output GeoTiff
-    if output: biota.IO.outputGeoTiff(change_downsampled, tile_change.output_pattern%'%sDownsampled'%change_type.title(), tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Byte, nodata = tile_change.nodata_byte)
+    if output: biota.IO.outputGeoTiff(change_downsampled, tile_change.output_pattern%'%sDownsampled'%change_type.title(), tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
     
     # Display
     if show: biota.IO.showFigure(tile_change, change_downsampled, title = '%s Downsampled'%change_type.title(), cbartitle = '%', vmin = 0, vmax = 50, cmap = 'Spectral_r')
 
     
     return change_downsampled
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

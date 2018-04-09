@@ -220,7 +220,7 @@ class LoadTile(object):
         
         # Generate a nodata value
         if dtype == gdal.GDT_Byte:
-            nodata = 99
+            nodata = 255
         else:
             nodata = 999999
         
