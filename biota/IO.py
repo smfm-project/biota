@@ -1,6 +1,8 @@
 
+import matplotlib.pyplot as plt
 import numpy as np
 import os
+
 
 import pdb
 
@@ -91,12 +93,22 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
     
 
 
-def buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = None, vmax = None, cmap = None):
+def buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = None, vmax = None, cmap = None, big_labels = False):
     """
-    Builds a standardised map for overviewFigure().
+    Builds a standardised map for overviewFigure() and showFigure().
     """
     
-    import matplotlib.pyplot as plt
+    labelsize = 5
+    titlesize = 8
+    cbarlabelsize = 6
+    cbartitlesize = 7
+    
+    if big_labels:
+        labelsize *= 2
+        titlesize *= 2
+        cbarlabelsize *= 2
+        cbartitlesize *= 2
+    
         
     im = ax.imshow(data, vmin = vmin, vmax = vmax, cmap = cmap, interpolation = 'nearest', aspect = 'auto')
     
@@ -104,15 +116,43 @@ def buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = None, vm
     ax.set_xticks(np.arange(0,data.shape[1],data.shape[1]/10))
     ax.set_yticklabels(np.arange(lat, lat - 1.01, - 0.1))
     ax.set_xticklabels(np.arange(lon, lon + 1.01, 0.1))
-    ax.tick_params(labelsize = 5)
-    ax.set_ylabel('Latitude', fontsize = 5)
-    ax.set_xlabel('Longitude', fontsize = 5)
-    ax.set_title(title, fontsize = 8)
+    ax.tick_params(labelsize = labelsize)
+    ax.set_ylabel('Latitude', fontsize = labelsize)
+    ax.set_xlabel('Longitude', fontsize = labelsize)
+    ax.set_title(title, fontsize = titlesize)
     
     cbar = fig.colorbar(im, ax = ax, fraction = 0.046, pad = 0.04)
-    cbar.ax.tick_params(labelsize = 6)
-    cbar.set_label(cbartitle, fontsize = 7)
+    cbar.ax.tick_params(labelsize = cbarlabelsize)
+    cbar.set_label(cbartitle, fontsize = cbartitlesize)
+
+
+def showFigure(tile, data, title = None, cbartitle = None, vmin = None, vmax = None, cmap = None, big_labels = True):
+    '''
+    Show an overview image.
     
+    Args:
+        tile: An ALOS tile from biota.LoadTile()
+        data: A numpy array containing the data to display
+        title: A string to show as the figure title
+        cbartitle: A string to show as the colorbar title
+        vmin: Min colorbar range
+        vmax: Max colorbar range
+        cmap: String of a matplotlib colorbar
+    '''
+    
+    # Set up new figure
+    fig = plt.figure(figsize = (7, 6))
+    ax = fig.add_subplot(1, 1, 1)
+    
+    # Plot map
+    buildMap(fig, ax, data, tile.lat, tile.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap, big_labels = big_labels)
+    
+    # Show in window
+    plt.show()
+        
+    # Tidy up
+    plt.close()
+        
 
 def overviewFigure(tile_change, output = False, show = True):
     """
@@ -127,8 +167,8 @@ def overviewFigure(tile_change, output = False, show = True):
     import matplotlib.pyplot as plt
     
     # Load AGB, and update masks to exclude areas outisde forest definition. Good for visualisation
-    AGB_t1 = tile_change.data_t1.getAGB()
-    AGB_t2 = tile_change.data_t2.getAGB()
+    AGB_t1 = tile_change.tile_t1.getAGB()
+    AGB_t2 = tile_change.tile_t2.getAGB()
     
     # Mask out areas < 10 tC/ha
     AGB_t1 = np.ma.array(AGB_t1, mask = np.logical_or(AGB_t1.mask, AGB_t1 < 10.))
@@ -157,12 +197,12 @@ def overviewFigure(tile_change, output = False, show = True):
     
     # Plot a map of absolute AGB change   
     ax3 = fig.add_subplot(2, 2, 3, sharex = ax1, sharey = ax1)
-    buildMap(fig, ax3, AGB_change, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
+    buildMap(fig, ax3, AGB_change, tile_change.lat, tile_change.lon, title = 'AGB change (%s-%s)'%(str(tile_change.tile_t1.year),str(tile_change.year_t2)),
               cbartitle = 'tC/ha', vmin = -10., vmax = 10., cmap = 'RdBu')    
     
     # Plot a map of % AGB change
     ax4 = fig.add_subplot(2, 2, 4, sharex = ax1, sharey = ax1)
-    buildMap(fig, ax4, change_code, tile_change.lat, tile_change.lon, title = 'Change type (%s-%s)'%(str(tile_change.data_t1.year),str(tile_change.year_t2)),
+    buildMap(fig, ax4, change_code, tile_change.lat, tile_change.lon, title = 'Change type (%s-%s)'%(str(tile_change.tile_t1.year),str(tile_change.year_t2)),
               vmin = 1., vmax = 6., cmap = 'Spectral')
     
     plt.tight_layout()

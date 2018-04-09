@@ -610,69 +610,60 @@ class LoadTile(object):
         biota.IO.outputGeoTiff(data, filename, self.geo_t, self.proj, output_dir = self.output_dir, dtype = dtype, nodata = nodata)
     
     def __showArray(self, data, title = '', cbartitle = '', vmin = None, vmax = None, cmap = None):
-        '''
-        '''
+        """
+        Display data from a tile.
+        """
         
-        # Set up new figure
-        fig = plt.figure(figsize = (7, 6))
-        ax = fig.add_subplot(1, 1, 1)
+        biota.IO.showFigure(self, data, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
         
-        # Plot map
-        biota.IO.buildMap(fig, ax, data, self.lat, self.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
-        
-        # Show in window
-        plt.show()
-        
-        # Tidy up
-        plt.close()
 
 class LoadChange(object):
     """
     Input is two mosaic tiles from LoadTile, will output maps and change statistics.
     """
         
-    def __init__(self, data_t1, data_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, output_dir = os.getcwd(), output = False):
+    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, output_dir = os.getcwd(), output = False):
         '''
         Initialise
         '''
         
         from osgeo import gdal
         
-        self.data_t1 = data_t1
-        self.data_t2 = data_t2
+        self.tile_t1 = tile_t1
+        self.tile_t2 = tile_t2
         
         # Ensure that tiles are compatable
         self.__testTiles()
         
         # Get basic properties
-        self.lat = data_t1.lat
-        self.lon = data_t1.lon
-        self.xRes = data_t1.xRes
-        self.yRes = data_t1.yRes
-        self.xSize = data_t1.xSize
-        self.ySize = data_t1.ySize
+        self.lat = tile_t1.lat
+        self.lon = tile_t1.lon
+        self.xRes = tile_t1.xRes
+        self.yRes = tile_t1.yRes
+        self.xSize = tile_t1.xSize
+        self.ySize = tile_t1.ySize
         
-        self.hem_NS = data_t1.hem_NS
-        self.hem_EW = data_t1.hem_EW
+        self.hem_NS = tile_t1.hem_NS
+        self.hem_EW = tile_t1.hem_EW
         
         # Get GDAL geotransform and projection
-        self.geo_t = data_t1.geo_t
-        self.proj = data_t1.proj
+        self.geo_t = tile_t1.geo_t
+        self.proj = tile_t1.proj
                 
         # Change definitions
         self.change_intensity_threshold = change_intensity_threshold
         self.change_magnitude_threshold = change_magnitude_threshold
         self.change_area_threshold = change_area_threshold
         
-        self.year_t1 = data_t1.year
-        self.year_t2 = data_t2.year
+        self.year_t1 = tile_t1.year
+        self.year_t2 = tile_t2.year
         
         self.output_dir = output_dir
         self.output_pattern = self.__getOutputPattern()
         
         # Nodata currently hardwired to 99
-        self.nodata = data_t1.nodata
-        self.nodata_byte = data_t1.nodata_byte
+        self.nodata = tile_t1.nodata
+        self.nodata_byte = tile_t1.nodata_byte
         
         # Calculate combined mask
         self.mask = self.__combineMasks()
@@ -682,24 +673,24 @@ class LoadChange(object):
         Test that input tiles are from reasonable lats/lons/years
         '''
         
-        assert self.data_t1.lat == self.data_t2.lat and self.data_t1.lon == self.data_t2.lon, "Input tiles must be from the same location."
-        assert self.data_t1.year <= self.data_t2.year, "Input data_t2 must be from a later year than data_t1."
-        assert self.data_t1.year != self.data_t2.year, "Input data_t1 cannot be from the same year as data_t2."
-        assert self.data_t1.lee_filter == self.data_t2.lee_filter, "Only one of the input tiles has been filtered. Both tiles should have the same pre-processing parameters."
-        assert self.data_t1.proj == self.data_t2.proj, "Input tiles do not have the same projection."
-        assert self.data_t1.xSize == self.data_t2.xSize and self.data_t1.ySize == self.data_t2.ySize, "Input tiles do not have the same resolution."
-        assert self.data_t1.geo_t == self.data_t2.geo_t, "Input tiles do not have the same geo_transform."
-        assert self.data_t1.forest_threshold == self.data_t2.forest_threshold, "'forest_threshold' must be identical for both input tiles."
-        assert self.data_t1.area_threshold == self.data_t2.area_threshold, "'area_threshold' must be identical for both input tiles."
-        assert self.data_t1.downsample_factor == self.data_t2.downsample_factor, "'downsample_facor' must be identical for both input tiles."
+        assert self.tile_t1.lat == self.tile_t2.lat and self.tile_t1.lon == self.tile_t2.lon, "Input tiles must be from the same location."
+        assert self.tile_t1.year <= self.tile_t2.year, "Input tile_t2 must be from a later year than tile_t1."
+        assert self.tile_t1.year != self.tile_t2.year, "Input tile_t1 cannot be from the same year as tile_t2."
+        assert self.tile_t1.lee_filter == self.tile_t2.lee_filter, "Only one of the input tiles has been filtered. Both tiles should have the same pre-processing parameters."
+        assert self.tile_t1.proj == self.tile_t2.proj, "Input tiles do not have the same projection."
+        assert self.tile_t1.xSize == self.tile_t2.xSize and self.tile_t1.ySize == self.tile_t2.ySize, "Input tiles do not have the same resolution."
+        assert self.tile_t1.geo_t == self.tile_t2.geo_t, "Input tiles do not have the same geo_transform."
+        assert self.tile_t1.forest_threshold == self.tile_t2.forest_threshold, "'forest_threshold' must be identical for both input tiles."
+        assert self.tile_t1.area_threshold == self.tile_t2.area_threshold, "'area_threshold' must be identical for both input tiles."
+        assert self.tile_t1.downsample_factor == self.tile_t2.downsample_factor, "'downsample_facor' must be identical for both input tiles."
 
 
     def __combineMasks(self):
         '''
-        Add together masks from data_t1 and data_t2
+        Add together masks from tile_t1 and tile_t2
         '''
         
-        return np.logical_or(self.data_t1.mask, self.data_t2.mask)
+        return np.logical_or(self.tile_t1.mask, self.tile_t2.mask)
         
     def __getOutputPattern(self):
         """
@@ -717,11 +708,23 @@ class LoadChange(object):
         
         # Generate a nodata value
         if dtype == gdal.GDT_Byte:
-            nodata = 99
+            nodata = 255
         else:
             nodata = 999999
         
-        return nodata    
+        return nodata
+
+    def shrinkGeoT(self, downsample_factor):
+        """
+        Function to modify gdal geo_transform to output at correct resolution for downsampled products.
+        """
+        
+        geo_t = list(self.geo_t)
+                
+        geo_t[1] = 1. / int(round(self.xSize / float(downsample_factor)))
+        geo_t[-1] = (1. / int(round(self.ySize / float(downsample_factor)))) * -1
+        
+        return tuple(geo_t)
             
     def getAGBChange(self, output = False, show = False):
         '''
@@ -730,7 +733,7 @@ class LoadChange(object):
         # Only run processing if not already done
         if not hasattr(self, 'AGBChange'):
             
-            AGB_change = self.data_t2.getAGB() - self.data_t1.getAGB()
+            AGB_change = self.tile_t2.getAGB() - self.tile_t1.getAGB()
             
             self.AGB_change = AGB_change
             
@@ -757,15 +760,15 @@ class LoadChange(object):
         if not hasattr(self, 'ChangeType'):
 
             # Pixels that move from forest to nonforest (F_NF) or vice versa (NF_F)
-            F_NF = np.logical_and(self.data_t1.getWoodyCover(), self.data_t2.getWoodyCover() == False)
-            NF_F = np.logical_and(self.data_t1.getWoodyCover() == False, self.data_t2.getWoodyCover())
+            F_NF = np.logical_and(self.tile_t1.getWoodyCover(), self.tile_t2.getWoodyCover() == False)
+            NF_F = np.logical_and(self.tile_t1.getWoodyCover() == False, self.tile_t2.getWoodyCover())
             
             # Pixels that remain forest (F_F) or nonforest (NF_NF)
-            F_F = np.logical_and(self.data_t1.getWoodyCover(), self.data_t2.getWoodyCover())
-            NF_NF = np.logical_and(self.data_t1.getWoodyCover() == False, self.data_t2.getWoodyCover() == False)
+            F_F = np.logical_and(self.tile_t1.getWoodyCover(), self.tile_t2.getWoodyCover())
+            NF_NF = np.logical_and(self.tile_t1.getWoodyCover() == False, self.tile_t2.getWoodyCover() == False)
             
             # Get pixels of change greater than intensity threshold
-            CHANGE_INTENSITY = np.logical_or((self.getAGBChange() / self.data_t1.getAGB()) >= self.change_intensity_threshold, (self.getAGBChange() / self.data_t1.getAGB()) < (- self.change_intensity_threshold))
+            CHANGE_INTENSITY = np.logical_or((self.getAGBChange() / self.tile_t1.getAGB()) >= self.change_intensity_threshold, (self.getAGBChange() / self.tile_t1.getAGB()) < (- self.change_intensity_threshold))
             
             # Get pixels of change greater than magnitude threshold
             CHANGE_MAGNITUDE = np.logical_or(self.getAGBChange() >= self.change_magnitude_threshold, self.getAGBChange() < (- self.change_magnitude_threshold))
@@ -774,8 +777,8 @@ class LoadChange(object):
             NOCHANGE = CHANGE == False
             
             # Trajectory (changes can be positive or negative)
-            DECREASE = self.data_t2.getAGB() < self.data_t1.getAGB()
-            INCREASE = self.data_t2.getAGB() >= self.data_t1.getAGB()
+            DECREASE = self.tile_t2.getAGB() < self.tile_t1.getAGB()
+            INCREASE = self.tile_t2.getAGB() >= self.tile_t1.getAGB()
             
             # Get a minimum pixel extent. Loss/Gain events much have a spatial extent greater than min_pixels, and not occur in nonforest.
             if self.change_area_threshold > 0:
@@ -876,7 +879,7 @@ class LoadChange(object):
                 
         if proportion: 
             for change_type in totals:    
-                totals[change_type] = totals[change_type] / (self.data_t1.getAGB() * self.xRes * self.yRes * 0.0001).sum()
+                totals[change_type] = totals[change_type] / (self.tile_t1.getAGB() * self.xRes * self.yRes * 0.0001).sum()
         
         if output: print 'TODO'
                 
@@ -900,17 +903,6 @@ class LoadChange(object):
         '''
         '''
         
-        # Set up new figure
-        fig = plt.figure(figsize = (7, 6))
-        ax = fig.add_subplot(1, 1, 1)
-        
-        # Plot map
-        biota.IO.buildMap(fig, ax, data, self.lat, self.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
-        
-        # Show in window
-        plt.show()
-        
-        # Tidy up
-        plt.close()
+        biota.IO.showFigure(self, data, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
 
         
