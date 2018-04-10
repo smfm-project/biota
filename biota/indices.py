@@ -304,9 +304,9 @@ def calculateTWC(tile, patch_size = 'auto', output = False, show = False):
         
         # Extract the data
         WC = woody_cover[ymin:ymax, xmin:xmax]
-        
+         
         #  If at least 50 % of data is present...
-        if TWC.mask.sum() <= ((patch_size ** 2) * 0.5):
+        if WC.mask.sum() <= ((patch_size ** 2) * 0.5):
             
             # Calculate proportion of woody cover in patch
             TWC.data[n, m] = int(round((float(WC.sum()) / ((patch_size ** 2) - WC.mask.sum())) * 100))
