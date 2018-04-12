@@ -18,7 +18,7 @@ Contents:
 ---------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
     
    setup.rst
    worked_example.rst
