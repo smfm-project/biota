@@ -21,8 +21,11 @@ Contents:
    :maxdepth: 1
     
    setup.rst
-   worked_example.rst
+   worked_example_1.rst
+   worked_example_2.rst
+   worked_example_3.rst
    biota.rst
+   
 
 
 Indices and tables

@@ -1,15 +1,7 @@
+Worked example: part 2
+======================
 
-
-
-Here we'll run through an example based on an area of Southeastern Tanzania called Kilwa District (Fig). This is a location where the University of Edinburgh coordinates a network of forest plots where we have good data on aboveground biomass.
-
-We'll download data, generate maps of gamma0 backscatter, AGB and forest cover.
-
-
-Downloading data
-----------------
-
-[To follow]
+In this section we'll use ``biota`` to generate maps of gamma0 backscatter, AGB, and forest cover.
 
 Open Python and import biota
 ----------------------------
