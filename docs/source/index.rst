@@ -21,6 +21,7 @@ Contents:
    :maxdepth: 2
     
    setup.rst
+   worked_example.rst
    biota.rst
 
 
