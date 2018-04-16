@@ -163,7 +163,7 @@ class LoadTile(object):
             directory = self.data_dir + '/' + name_pattern%(lat_dir, lon_dir, str(self.year)[-2:], 'MOS') + '/'
             
             if not os.path.isdir(directory):
-                raise IOError('No tile for lat: %s, lon: %s exists in the specified data directory.')
+                raise IOError('No tile for lat: %s, lon: %s exists in the specified data directory.'%(str(self.lat), str(self.lon)))
         
         return directory
     
