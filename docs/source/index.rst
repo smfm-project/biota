@@ -6,16 +6,21 @@
 Welcome to biota's documentation!
 =================================
 
-Introduction
-------------
+.. figure:: images/alos_examples.png
 
-This documentation will show:
+The BIOmass Tool for Alos (``biota``) is a Python module that uses data from JAXA's ALOS mosaic product to generate maps of:
 
-* How to generate a biomass map using the ALOS mosaic product
-* A method for generating a biomass change map (deforestation and degradation)
+* Aboveground biomass
+* Forest cover
+* Forest cover change
+
+Who do I talk to?
+-----------------
+
+Written and maintained by Samuel Bowers (sam.bowers@ed.ac.uk).
 
 Contents:
----------
+=========
 
 .. toctree::
    :maxdepth: 1
@@ -25,8 +30,6 @@ Contents:
    worked_example_2.rst
    worked_example_3.rst
    biota.rst
-   
-
 
 Indices and tables
 ==================
