@@ -83,10 +83,6 @@ class LoadTile(object):
         # Set up locations for file output
         self.output_pattern = self.__getOutputPattern()
         self.output_dir = output_dir
-        
-        # Stop of the ALOS tile doesn't exist
-        if not os.path.isfile(self.HV_path): 
-            raise IOError('ALOS tile does not exist in the file system.')
 
         # Get Raster size
         self.ySize, self.xSize = self.__getSize(self.HH_path)
@@ -136,16 +132,6 @@ class LoadTile(object):
         
         assert os.path.isdir(self.data_dir), "Data location must be a directory."
         
-        # Calculate the hemisphere and lat/lon of the 5x5 tile
-        lat_dir = self.lat + (5 - self.lat) % 5
-        lon_dir = self.lon - (self.lon % 5)
-        hem_NS_dir = 'S' if lat_dir < 0 else 'N'
-        hem_EW_dir = 'W' if lon_dir < 0 else 'E'
-
-        # Get lat/lon for directory (lat/lon of upper-left hand corner of 5x5 tiles)
-        lat_dir = hem_NS_dir + str(abs(lat_dir)).zfill(2)
-        lon_dir = hem_EW_dir + str(abs(lon_dir)).zfill(3)
-                
         # Directories and files have standardised pattern
         name_pattern = '%s%s_%s_%s'
         
@@ -153,8 +139,31 @@ class LoadTile(object):
         if self.satellite == 'ALOS-2':
             name_pattern += '_F02DAR'
         
+        # First, check if the 1x1 tile is present at data_dir
+        lat_dir = self.hem_NS + str(abs(self.lat)).zfill(2)
+        lon_dir = self.hem_EW + str(abs(self.lon)).zfill(3)
+        
         # Generate directory name
         directory = self.data_dir + '/' + name_pattern%(lat_dir, lon_dir, str(self.year)[-2:], 'MOS') + '/'
+        
+        # If no 1x1 tile, check that 5x5 tile exists
+        if not os.path.isdir(directory):
+                        
+            # Calculate the hemisphere and lat/lon of the 5x5 tile
+            lat_large = self.lat + (5 - self.lat) % 5
+            lon_large = self.lon - (self.lon % 5)
+            hem_NS_large = 'S' if lat_large < 0 else 'N'
+            hem_EW_large = 'W' if lon_large < 0 else 'E'
+            
+            # Get lat/lon for directory (lat/lon of upper-left hand corner of 5x5 tiles)
+            lat_dir = hem_NS_large + str(abs(lat_large)).zfill(2)
+            lon_dir = hem_EW_large + str(abs(lon_large)).zfill(3)
+        
+            # Generate directory name
+            directory = self.data_dir + '/' + name_pattern%(lat_dir, lon_dir, str(self.year)[-2:], 'MOS') + '/'
+            
+            if not os.path.isdir(directory):
+                raise IOError('No tile for lat: %s, lon: %s exists in the specified data directory.')
         
         return directory
     
@@ -181,28 +190,53 @@ class LoadTile(object):
         Determines the filepath to HV data.
         """
         
-        return self.__getDirectory() + self.__getFilename('sl_HH')
+        HHpath = self.__getDirectory() + self.__getFilename('sl_HH')
+        
+        # Stop if the ALOS data don't exist
+        if not os.path.isfile(HHpath): 
+            raise IOError('No data found for HH polarisation for lat: %s, lon: %s.')
+        
+        return HHpath
     
     def __getHVPath(self):
         """
         Determines the filepath to HV data.
         """
         
-        return self.__getDirectory() + self.__getFilename('sl_HV')
+        HVpath = self.__getDirectory() + self.__getFilename('sl_HV')
+        
+        # Stop if the ALOS data don't exist
+        if not os.path.isfile(HVpath): 
+            raise IOError('No data found for HV polarisation for lat: %s, lon: %s.')
+        
+        return HVpath
+    
     
     def __getMaskPath(self):
         """
         Determines the filepath to mask data.
         """
+                
+        mask = self.__getDirectory() + self.__getFilename('mask')
         
-        return self.__getDirectory() + self.__getFilename('mask')
+        # Stop if the ALOS data don't exist
+        if not os.path.isfile(mask): 
+            raise IOError('No data found for mask for lat: %s, lon: %s.')
+        
+        return mask 
     
     def __getDatePath(self):
         """
         Determines the filepath to DOY data.
         """
         
-        return self.__getDirectory() + self.__getFilename('date')
+        date = self.__getDirectory() + self.__getFilename('date')
+        
+        # Stop if the ALOS data don't exist
+        if not os.path.isfile(date): 
+            raise IOError('No data found for date for lat: %s, lon: %s.')
+        
+        return date 
     
     def __getOutputPattern(self):
         """
