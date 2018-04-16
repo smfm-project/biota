@@ -4,26 +4,19 @@ biota package
 Submodules
 ----------
 
-biota.calibration module
-------------------------
-
-.. automodule:: biota.calibration
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-biota.change2 module
---------------------
-
-.. automodule:: biota.change
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 biota.download module
 ---------------------
 
 .. automodule:: biota.download
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+biota.core module
+-----------------
+
+.. automodule:: biota.core
     :members:
     :undoc-members:
     :show-inheritance:
