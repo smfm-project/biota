@@ -178,7 +178,7 @@ Further options when loading an ALOS tile
 -----------------------------------------
 .. _furtheroptions:
 
-``biota`` supports a range of options for data processing and forest definitions. These options should be specified when loading a tile.
+``biota`` supports a range of options for data processing and forest definitions. These options should be specified when loading a tile. These various options can be specified in any combination, but be aware that when analysing change the pre-processing steps for each tile should be identical.
 
 Speckle filtering
 ~~~~~~~~~~~~~~~~~
@@ -242,7 +242,7 @@ Using the commands above, we can create a script to automate the pre-processing 
     longitude = 38
     
     # Load the ALOS tile with specified options
-    tile_2007 = biota.LoadTile(data_dir, longitude, latitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
+    tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
     
     # Calculate gamma0 and output to GeoTiff
     gamma0_2007 = tile_2007.getGamma0(output = True)
@@ -277,7 +277,7 @@ Save this file (e.g. ``process_2007.py``), and run on the command line:
         
             # Load the ALOS tile with specified options
             try:
-                tile_2007 = biota.LoadTile(data_dir, longitude, latitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
+                tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
             
             except:
                 continue
