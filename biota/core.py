@@ -109,8 +109,8 @@ class LoadTile(object):
         if self.downsample_factor != 1:
             self.__rebin()
         
-        # Load DN, mask, and day of year
-        self.mask = self.getMask()
+        # Load mask
+        self.mask = self.__getMask()
                 
         
     def __getSatellite(self):
@@ -366,20 +366,20 @@ class LoadTile(object):
         # Update number of looks
         self.nLooks = self.nLooks * (self.downsample_factor ** 2)
     
-    def getMask(self, masked_px_count = False, output = False, show = False):
+    def __getMask(self, masked_px_count = False, output = False, show = False):
         """
         Loads the mask into a numpy array.
         """
-                
-        mask = biota.IO.loadArray(self.mask_path) != 255
         
+        mask = biota.IO.loadArray(self.mask_path) != 255
+                        
         # If resampling, this removes the mask from any pixel with >= 75 % data availability.
         if self.downsample_factor != 1 and not masked_px_count:
             mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum) >= ((self.downsample_factor ** 2) * 0.25)
-     
+            
         # This is an option to return the sum of masked pixels. It's used to downsample the DN array.
         if self.downsample_factor != 1 and masked_px_count:
-            mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum)
+            mask = skimage.measure.block_reduce(mask, (self.downsample_factor, self.downsample_factor), np.sum)   
         
         if output: self.__outputGeoTiff(mask, 'Mask', dtype = gdal.GDT_Byte)
         
@@ -420,7 +420,7 @@ class LoadTile(object):
         Function to reset a mask to the default.
         """
         
-        self.mask = self.getMask()
+        self.mask = self.__getMask()
        
     def getDN(self, polarisation = 'HV', output = False, show = False):
         """
@@ -440,12 +440,16 @@ class LoadTile(object):
             # Load the sum of DNs
             DN_sum = skimage.measure.block_reduce(DN, (self.downsample_factor, self.downsample_factor), np.sum)
             
-            # Amd the sum of masked pixels
-            mask_sum = self.getMask(masked_px_count = True)
+            # Load the sum of contributing pixels
+            block_sum = skimage.measure.block_reduce(np.ones_like(DN), (self.downsample_factor, self.downsample_factor), np.sum)
+            
+            # And the sum of masked pixels
+            mask_sum = self.__getMask(masked_px_count = True)
             
             # Divide the sum of DNs by the sum of unmasked pixels to get the mean DN value
             DN = np.zeros_like(DN_sum)
-            DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / ((self.downsample_factor ** 2) - mask_sum[self.mask == False])).astype(np.int)
+            
+            DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / (block_sum - mask_sum)[self.mask == False]).astype(np.int)
         
         if output: self.__outputGeoTiff(DN, 'DN', dtype = gdal.GDT_Int32)
         
