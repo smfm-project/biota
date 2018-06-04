@@ -164,13 +164,13 @@ def getBBox(shp, field, value):
     return bbox
     
 
-def maskRaster(tile, tif, classes = [], buffer_size = 0.):
+def maskRaster(tile, raster, classes = [], buffer_size = 0.):
     '''
     Extract a mask from a GeoTiff based on specified classes
     
     Args:
         tile: An ALOS tile (biota.LoadTile())
-        tif: A GeoTiff file, with integer values
+        raster: A GeoTiff or VRT file, with integer values
         classes: A list of values to add to be masked
         buffer_size: Optionally specify a buffer to add around maked pixels, in meters.
     
@@ -180,14 +180,14 @@ def maskRaster(tile, tif, classes = [], buffer_size = 0.):
     
     from osgeo import gdal
     
-    assert tif.rstrip('/').split('.')[-1] == 'tif' or tif.rstrip('/').split('.')[-1] == 'tiff', "tif input must be a GeoTiff file."
+    assert raster.rstrip('/').split('.')[-1] == 'tif' or raster.rstrip('/').split('.')[-1] == 'tiff' or raster.rstrip('/').split('.')[-1] == 'vrt', "raster input must be a GeoTiff or VRT file."
     
-    tif = os.path.expanduser(tif)
-    assert os.path.exists(tif), "GeoTiff file %s does not exist in the file system."%tif
+    raster = os.path.expanduser(raster)
+    assert os.path.exists(raster), "GeoTiff file %s does not exist in the file system."%raster
     
     # Open GeoTiff and get metadata
-    ds_source = gdal.Open(tif)
-    proj_source = biota.IO.loadProjection(tif)
+    ds_source = gdal.Open(raster)
+    proj_source = biota.IO.loadProjection(raster)
     
     # Create output file matching ALOS tile
     gdal_driver = gdal.GetDriverByName('MEM')

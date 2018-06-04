@@ -394,16 +394,16 @@ class LoadTile(object):
         
         file_type = filename.split('/')[-1].split('.')[-1]
         
-        assert file_type in ['shp', 'tif', 'tiff'], "Input filename must be a GeoTiff or a shapefile."
+        assert file_type in ['shp', 'tif', 'tiff', 'vrt'], "Input filename must be a GeoTiff, VRT, or a shapefile."
                 
         if file_type == 'shp':
         
             # Rasterize the shapefile, optionally with a buffer
             mask = biota.mask.maskShapefile(self, filename, buffer_size = buffer_size)
         
-        if file_type in ['tif', 'tiff']:
+        if file_type in ['tif', 'tiff', 'vrt']:
             
-            assert classes != [], "If adding a GeoTiff file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
+            assert classes != [], "If adding a GeoTiff or VRT file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
             
             # Resample and extract values from shapefile, optionally with a buffer
             mask = biota.mask.maskRaster(self, filename, classes = classes, buffer_size = buffer_size)
