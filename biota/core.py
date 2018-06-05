@@ -456,45 +456,93 @@ class LoadTile(object):
         if show: self.__showArray(DN, title = 'DN', cbartitle = 'Digital Number', cmap = 'Spectral_r')
 
         return np.ma.array(DN, mask = self.mask)
+
+    def __getDay(self):
+        '''
+        '''
         
-    def getDOY(self, output = False, show = False):
+        day_after_launch = biota.IO.loadArray(self.date_path)
+        
+        # If required, downsample the dates array      
+        if self.downsample_factor != 1:
+            
+            day_after_launch = skimage.measure.block_reduce(dates, (self.downsample_factor, self.downsample_factor), np.max)
+        
+        return day_after_launch
+
+    
+    def getDate(self, output = False, show = False):
         """
         Loads date values into a numpy array.
         """
         
         from osgeo import gdal
-        
-        day_after_launch = biota.IO.loadArray(self.date_path)
-        
-        # Get list of unique dates in ALOS tile
-        unique_days = np.unique(day_after_launch)
-        
-        # Days are counted from the launch date
-        if self.satellite == 'ALOS-2':
-            launch_date = dt.datetime(2014,5,24)
-        else:
-            launch_date =  dt.datetime(2006,1,24)
-        
-        # Determine the Day of Year associated with each
-        unique_dates = [launch_date  + dt.timedelta(days=int(d)) for d in unique_days]
-        unique_doys = [(d - dt.datetime(d.year,1,1,0,0)).days + 1 for d in unique_dates]
-        
-        # Build a Day Of Year array
-        DOY = np.zeros_like(day_after_launch)
-        for day, doy in zip(unique_days, unique_doys):
-            DOY[day_after_launch == day] = doy
-        
-        # If required, downsample the DOY array      
-        if self.downsample_factor != 1:
+
+        # Don't rerun processing if already present in memory
+        if not hasattr(self, 'date'):
             
-            # Take the latest DOY where > 1 date, as there's no numpy function for mode
-            DOY = skimage.measure.block_reduce(DOY, (self.downsample_factor, self.downsample_factor), np.max)
+            day_after_launch = self.__getDay()
+
+            # Get list of unique dates in ALOS tile
+            unique_days = np.unique(day_after_launch[day_after_launch != 0])
+            
+            # Days are counted from the launch date
+            if self.satellite == 'ALOS-2':
+                launch_date = dt.datetime(2014, 5, 24)
+            else:
+                launch_date = dt.datetime(2006, 1, 24)
+            
+            # Determine the Day of Year associated with each
+            unique_dates = [launch_date  + dt.timedelta(days=int(d)) for d in unique_days]
+            
+            # Build a Day Of Year array
+            dates = np.zeros_like(day_after_launch, dtype='datetime64[D]')
+            dates_int = np.zeros_like(day_after_launch, dtype = np.int32)
+            for day, date in zip(unique_days, unique_dates):
+                dates[day_after_launch == day] = np.datetime64(date,'D')
+                dates_int[day_after_launch == day] = np.int(np.datetime64(date,'D').astype(dt.date).strftime('%Y%m%d'))
+            
+            # Save output to class
+            self.date = dates
+            self.date_int = dates_int
         
-        if output: self.__outputGeoTiff(DOY, 'DOY', dtype = gdal.GDT_Int32)
+        if output: self.__outputGeoTiff(self.dates_int, 'Date', dtype = gdal.GDT_Int32)
         
-        if show: self.__showArray(DOY, title = 'DOY', cbartitle = 'Day', vmin = 0, vmax = 366, cmap = 'Spectral')
+        if show: print "Sorry, matplotlib doesn't support display of numpy datetime objects right now."
         
-        return DOY
+        return self.date
+        
+    def getDOY(self, output = False, show = False):
+        """
+        Loads day of year values into a numpy array.
+        """
+
+        from osgeo import gdal
+
+        # Don't rerun processing if already present in memory
+        if not hasattr(self, 'DOY'):
+                        
+            day_after_launch = self.__getDay()
+            dates = self.getDate()       
+            
+            # Determine the Day of Year associated with each
+            unique_dates = np.unique(dates)
+            unique_doys = [(d.astype(dt.date) - dt.date(d.astype(dt.date).year,1,1)).days + 1 for d in unique_dates]
+            unique_days = np.unique(day_after_launch)
+
+            # Build a Day Of Year array
+            DOY = np.zeros_like(dates, dtype = np.int16)
+            for day, doy in zip(unique_days, unique_doys):
+                DOY[day_after_launch == day] = doy
+            
+            # Save output to class
+            self.DOY = DOY
+            
+        if output: self.__outputGeoTiff(self.DOY, 'DOY', dtype = gdal.GDT_Int32)
+        
+        if show: self.__showArray(self.DOY, title = 'DOY', cbartitle = 'Day', vmin = 0, vmax = 366, cmap = 'Spectral')
+        
+        return self.DOY       
     
     def getGamma0(self, polarisation = 'HV', units = 'natural', output = False, show = False):
         """
