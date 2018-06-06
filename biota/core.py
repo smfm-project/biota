@@ -466,7 +466,7 @@ class LoadTile(object):
         # If required, downsample the dates array      
         if self.downsample_factor != 1:
             
-            day_after_launch = skimage.measure.block_reduce(dates, (self.downsample_factor, self.downsample_factor), np.max)
+            day_after_launch = skimage.measure.block_reduce(day_after_launch, (self.downsample_factor, self.downsample_factor), np.max)
         
         return day_after_launch
 
