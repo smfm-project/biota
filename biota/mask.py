@@ -162,7 +162,39 @@ def getBBox(shp, field, value):
     bbox = shapes[getField(shp, field) == value][0].bbox
     
     return bbox
+
+def maskArray(tile, array, classes = [], buffer_size = 0.):
+    '''
+    Extract a mask from a numpy array based on specified classes
+
+    Args:
+        tile: An ALOS tile (biota.LoadTile())
+        array: A numpy array
+        classes: A list of values to add to be masked
+        buffer_size: Optionally specify a buffer to add around maked pixels, in meters.
     
+    Returns:
+        A numpy array with a boolean mask
+    '''
+    
+    assert (tile.ySize, tile.xSize) == array.shape, "Numpy array shape must be identical to the tile extent."
+    
+    # If a binary mask is input, assume that True should be added to mask
+    if array.dtype == np.bool and classes == []:
+        classes = [True]
+    
+    # Identify pixels that are classes to be masked
+    mask = np.in1d(array, classes).reshape(array.shape)
+            
+    if buffer_size > 0.:
+        
+        # Determine the size of the buffer in pixels
+        buffer_px = int(buffer_size / ((tile.xRes + tile.yRes) / 2.))
+        
+        # Dilate the mask
+        mask = dilateMask(mask, buffer_px)
+        
+    return mask
 
 def maskRaster(tile, raster, classes = [], buffer_size = 0.):
     '''
@@ -202,15 +234,7 @@ def maskRaster(tile, raster, classes = [], buffer_size = 0.):
     tif_resampled = ds_dest.GetRasterBand(1).ReadAsArray()
         
     # Identify pixels that are classes to be masked
-    mask = np.in1d(tif_resampled, classes).reshape(tif_resampled.shape)
-            
-    if buffer_size > 0.:
-        
-        # Determine the size of the buffer in pixels
-        buffer_px = int(buffer_size / ((tile.xRes + tile.yRes) / 2.))
-        
-        # Dilate the mask
-        mask = dilateMask(mask, buffer_px)
+    mask = maskArray(tile, tif_resampled, classes = classes, buffer_size = buffer_size)
     
     return mask
 
@@ -377,3 +401,53 @@ def getTilesInShapefile(shp, field = None, value = None):
         [tiles_to_include.add(t) for t in tiles]
     
     return sorted(list(tiles_to_include))
+
+
+def updateMask(tile, filename, buffer_size = 0., classes = []):
+    """
+    Function to generate a VRT, GeoTiff, shapefile, or numpy array mask to match an ALOS tile.
+    
+    Args:
+        ::
+        tile: An ALOS tile (biota.LoadTile())
+        filename: A GeoTiff, VRT or shapefile (string)m or a numpy array
+        buffer_size: Optionally specify a buffer to add around maked pixels, in meters.
+        classes: A list of values to add to be masked from a raster input. May be omitted where a boolean numpy array is input.
+    
+    Returns:
+        A boolean numpy array
+    """
+    
+    if type(filename) == str:
+        
+        file_type = filename.split('/')[-1].split('.')[-1]   
+        
+        assert file_type in ['shp', 'tif', 'tiff', 'vrt'], "Input must be a numpy array, GeoTiff, VRT, or a shapefile."
+        
+    elif type(filename) == np.ndarray or type(filename) == np.ma.core.MaskedArray:
+        file_type = 'array'
+        
+    else:
+        
+        assert False, "Input must be a numpy array, GeoTiff, VRT, or a shapefile."
+            
+    if file_type == 'shp':
+    
+        # Rasterize the shapefile, optionally with a buffer
+        mask = biota.mask.maskShapefile(tile, filename, buffer_size = buffer_size)
+    
+    elif file_type in ['tif', 'tiff', 'vrt']:
+        
+        assert classes != [], "If adding a GeoTiff or VRT file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
+        
+        # Resample and extract values from shapefile, optionally with a buffer
+        mask = biota.mask.maskRaster(tile, filename, classes = classes, buffer_size = buffer_size)
+    
+    else:
+        
+        if filename.dtype != np.bool:
+            assert classes != [], "If adding a non-boolean numpy array file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
+        
+        mask = biota.mask.maskArray(tile, filename, classes = classes, buffer_size = buffer_size)
+    
+    return mask

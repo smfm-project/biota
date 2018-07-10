@@ -17,6 +17,7 @@ import biota.filter
 import biota.indices
 import biota.IO
 import biota.mask
+import biota.SM
 
 """
 These are two classes for loading individual tiles and compliling them into a change object.
@@ -36,7 +37,7 @@ class LoadTile(object):
         mask:
     """
         
-    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, output_dir = os.getcwd()):
+    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, sm_dir = os.getcwd(), output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -53,6 +54,7 @@ class LoadTile(object):
         assert downsample_factor >= 1 and type(downsample_factor) == int, "Downsampling factor must be an integer greater than 1."
         assert type(lee_filter) == bool, "Option lee_filter must be set to 'True' or 'False'."
         assert os.path.isdir(os.path.expanduser(data_dir)), "Specified data directory (%s) does not exist"%str(data_dir)
+        assert os.path.isdir(os.path.expanduser(sm_dir)), "Specified soil moisture directory (%s) does not exist"%str(sm_dir)
         assert os.path.isdir(os.path.expanduser(output_dir)), "Specified output directory (%s) does not exist"%str(output_dir)
         assert type(forest_threshold) == float or type(forest_threshold) == int, "Forest threshold must be numeric."
         assert type(area_threshold) == float or type(area_threshold) == int, "Area threshold must be numeric."
@@ -80,9 +82,12 @@ class LoadTile(object):
         self.mask_path = self.__getMaskPath()
         self.date_path = self.__getDatePath()
         
+        # Set up soil moisture data location
+        self.SM_dir = os.path.expanduser(sm_dir.rstrip('/'))
+        
         # Set up locations for file output
         self.output_pattern = self.__getOutputPattern()
-        self.output_dir = output_dir
+        self.output_dir = os.path.expanduser(output_dir.rstrip('/'))
 
         # Get Raster size
         self.ySize, self.xSize = self.__getSize(self.HH_path)
@@ -389,24 +394,11 @@ class LoadTile(object):
     
     def updateMask(self, filename, buffer_size = 0., classes = [], output = False, show = False):
         """
-        Function to add further pixels to mask based on a shapefile or GeoTiff file, with optional buffers.
+        Function to add further pixels to mask based on a numpy array, shapefile or GeoTiff file, with optional buffers.
         """
         
-        file_type = filename.split('/')[-1].split('.')[-1]
-        
-        assert file_type in ['shp', 'tif', 'tiff', 'vrt'], "Input filename must be a GeoTiff, VRT, or a shapefile."
-                
-        if file_type == 'shp':
-        
-            # Rasterize the shapefile, optionally with a buffer
-            mask = biota.mask.maskShapefile(self, filename, buffer_size = buffer_size)
-        
-        if file_type in ['tif', 'tiff', 'vrt']:
-            
-            assert classes != [], "If adding a GeoTiff or VRT file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
-            
-            # Resample and extract values from shapefile, optionally with a buffer
-            mask = biota.mask.maskRaster(self, filename, classes = classes, buffer_size = buffer_size)
+        # Load mask
+        mask = biota.mask.updateMask(self, filename, buffer_size = buffer_size, classes = classes)
         
         # Add the new raster masks to the existing mask
         self.mask = np.logical_or(self.mask, mask)
@@ -469,7 +461,6 @@ class LoadTile(object):
             day_after_launch = skimage.measure.block_reduce(day_after_launch, (self.downsample_factor, self.downsample_factor), np.max)
         
         return day_after_launch
-
     
     def getDate(self, output = False, show = False):
         """
@@ -544,6 +535,28 @@ class LoadTile(object):
         
         return self.DOY       
     
+    def getSM(self, output = False, show = False):
+        """
+        Loads a soil moisture map using the ESA CCI soil moisture product.
+        """
+
+        # Don't rerun processing if already present in memory
+        if not hasattr(self, 'SM'):
+            
+            SM = biota.SM.getSM(self)
+            
+            # Keep masked values tidy
+            SM.data[self.mask] = self.nodata
+            
+            # Save output to class
+            self.SM = SM
+        
+        if output: self.__outputGeoTiff(self.SM, 'SM')
+
+        if show: self.__showArray(self.SM, title = 'Soil Moisture', cbartitle = 'm^2/m^2', vmin = 0., vmax = 0.3, cmap = 'Blues')
+        
+        return self.SM
+        
     def getGamma0(self, polarisation = 'HV', units = 'natural', output = False, show = False):
         """
         Calibrates data to gamma0 (baskscatter) in decibels or natural units.
@@ -703,7 +716,7 @@ class LoadTile(object):
         Display data from a tile.
         """
         
-        biota.IO.showFigure(self, data, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
+        biota.IO.showFigure(data, self.lat, self.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
         
 
 class LoadChange(object):
@@ -803,18 +816,44 @@ class LoadChange(object):
         
         return nodata
 
-    def shrinkGeoT(self, downsample_factor):
+    def updateMask(self, filename, buffer_size = 0., classes = [], output = False, show = False):
         """
-        Function to modify gdal geo_transform to output at correct resolution for downsampled products.
+        Function to add further pixels to mask based on a numpy array, shapefile or GeoTiff file, with optional buffers.
         """
         
-        geo_t = list(self.geo_t)
-                
-        geo_t[1] = 1. / int(round(self.xSize / float(downsample_factor)))
-        geo_t[-1] = (1. / int(round(self.ySize / float(downsample_factor)))) * -1
+        # Load mask
+        mask = biota.mask.updateMask(self, filename, buffer_size = buffer_size, classes = classes)
         
-        return tuple(geo_t)
+        # Add the new raster masks to the existing mask
+        self.mask = np.logical_or(self.mask, mask)
+    
+        if output: self.__outputGeoTiff(self.mask, 'Mask', dtype = gdal.GDT_Byte)
+        
+        if show: self.__showArray(self.mask, title = 'Mask', cmap = 'coolwarm')
+        
+    def resetMask(self):
+        """
+        Function to reset a mask to the default.
+        """
+        
+        self.mask = self.__combineMasks()
+    
+    
+    def getSMChange(self, output = False, show = False):
+        """
+        """
+        
+        # Only run processing if not already done
+        if not hasattr(self, 'SMChange'):
             
+            self.SMChange = self.tile_t2.getSM() - self.tile_t1.getSM()
+
+        if output: self.__outputGeoTiff(self.SMChange, 'SMChange')
+        
+        if show: self.__showArray(self.SMChange, title = 'SM Change', cbartitle = 'm^2/m^2', vmin = -0.15, vmax = 0.15, cmap = 'RdBu')
+        
+        return self.SMChange
+        
     def getAGBChange(self, output = False, show = False):
         '''
         '''
@@ -822,10 +861,8 @@ class LoadChange(object):
         # Only run processing if not already done
         if not hasattr(self, 'AGBChange'):
             
-            AGB_change = self.tile_t2.getAGB() - self.tile_t1.getAGB()
-            
-            self.AGB_change = AGB_change
-            
+            self.AGB_change = self.tile_t2.getAGB() - self.tile_t1.getAGB()
+                        
         if output: self.__outputGeoTiff(self.AGB_change, 'AGBChange')
         
         if show: self.__showArray(self.AGB_change, title = 'AGB Change', cbartitle = 'tC/ha', vmin = -10, vmax = 10, cmap = 'RdBu')
@@ -992,6 +1029,6 @@ class LoadChange(object):
         '''
         '''
         
-        biota.IO.showFigure(self, data, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
+        biota.IO.showFigure(data, self.lat, self.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap)
 
         

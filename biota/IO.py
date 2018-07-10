@@ -126,13 +126,14 @@ def buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = None, vm
     cbar.set_label(cbartitle, fontsize = cbartitlesize)
 
 
-def showFigure(tile, data, title = None, cbartitle = None, vmin = None, vmax = None, cmap = None, big_labels = True):
+def showFigure(data, lat, lon, title = None, cbartitle = None, vmin = None, vmax = None, cmap = None, big_labels = True):
     '''
     Show an overview image.
     
     Args:
-        tile: An ALOS tile from biota.LoadTile()
         data: A numpy array containing the data to display
+        lat: Latitude, an integer
+        lon: Longitude, an integer
         title: A string to show as the figure title
         cbartitle: A string to show as the colorbar title
         vmin: Min colorbar range
@@ -145,7 +146,7 @@ def showFigure(tile, data, title = None, cbartitle = None, vmin = None, vmax = N
     ax = fig.add_subplot(1, 1, 1)
     
     # Plot map
-    buildMap(fig, ax, data, tile.lat, tile.lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap, big_labels = big_labels)
+    buildMap(fig, ax, data, lat, lon, title = title, cbartitle = cbartitle, vmin = vmin, vmax = vmax, cmap = cmap, big_labels = big_labels)
     
     # Show in window
     plt.show()
