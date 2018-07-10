@@ -163,46 +163,4 @@ def getSM(tile, search_days = 7):
         
     return out
     
-
-if __name__ == '__main__':
-    """
-    """
-    
-    sm_dir = '/home/sbowers3/guasha/sam_bowers/soil_moisture/'
-    alos_dir = '/home/sbowers3/SMFM/ALOS_data/'
-    output_dir = '/home/sbowers3/guasha/sam_bowers/carla_outputs/'
-    
-    for lat in range(-15, -5, 1):
-        for lon in range(30, 40, 1):
-    
-            #lat, lon = -15, 30
-            print lat, lon
-            #lat, lon = -10, 17
-            
-            #lat = -15; lon = 35
-            
-            try:
-                tile_2007 = biota.LoadTile(alos_dir, lat, lon, 2007, downsample_factor = 1)
-                tile_2010 = biota.LoadTile(alos_dir, lat, lon, 2010, downsample_factor = 1)
-                tile_change = biota.LoadChange(tile_2007, tile_2010)
-                
-                sm_2007 = getSM(tile_2007, sm_dir)
-                sm_2010 = getSM(tile_2010, sm_dir)
-                sm_change = sm_2010 - sm_2007
-                
-                sm_change_out = (sm_change * 0).astype(np.int)
-                np.ma.set_fill_value(sm_change_out, 999999)
-                sm_change_out[np.logical_and(sm_change.data < -0.1, sm_change.mask == False)] = 1
-                sm_change_out[np.logical_and(sm_change.data > 0.1, sm_change.mask == False)] = 1
-                
-                #biota.IO.showFigure(sm_2007, lat, lon, title = 'Soil moisture', cbartitle = 'm^2/m^2', vmin = 0, vmax = 0.25, cmap = 'Blues')
-                
-            except:
-                print '    No data for this tile'
-                continue
-            
-            
-            biota.IO.outputGeoTiff(sm_2007, tile_2007.output_pattern%'SM', tile_2007.geo_t, tile_2007.proj, output_dir = output_dir, dtype = 6, nodata = 999999.)
-            biota.IO.outputGeoTiff(sm_2010, tile_2010.output_pattern%'SM', tile_2010.geo_t, tile_2010.proj, output_dir = output_dir, dtype = 6, nodata = 999999.)
-            biota.IO.outputGeoTiff(sm_change_out, tile_change.output_pattern%'SM', tile_change.geo_t, tile_change.proj, output_dir = output_dir, dtype = 5, nodata = 999999)
             
