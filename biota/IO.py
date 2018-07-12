@@ -76,7 +76,7 @@ def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype =
     
     # Save image with georeference info
     driver = gdal.GetDriverByName('GTiff')
-    ds = driver.Create(output_path, data.shape[0], data.shape[1], 1, dtype, options = ['COMPRESS=LZW'])
+    ds = driver.Create(output_path, data.shape[1], data.shape[0], 1, dtype, options = ['COMPRESS=LZW'])
     ds.SetGeoTransform(geo_t)
     ds.SetProjection(proj)
         
