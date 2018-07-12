@@ -270,7 +270,7 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
     buffer_px = int(round(buffer_size_degrees / tile.geo_t[1]))
     
     # Create output image. Add a buffer around the image array equal to the maxiumum dilation size. This means that features just outside ALOS tile extent can contribute to dilated mask.
-    rasterPoly = Image.new("I", (tile.ySize + (buffer_px * 2), tile.xSize + (buffer_px * 2)), 0)
+    rasterPoly = Image.new("I", (tile.xSize + (buffer_px * 2), tile.ySize + (buffer_px * 2)), 0)
     rasterize = ImageDraw.Draw(rasterPoly)
     
     # The shapefile may not have the same CRS as ALOS mosaic data, so this will generate a function to reproject points.
