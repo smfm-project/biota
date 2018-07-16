@@ -299,8 +299,8 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
         
         # Go to the next record if out of bounds
         if sxmax < tile.geo_t[0] - buffer_size_degrees: continue
-        if sxmin > tile.geo_t[0] + (tile.geo_t[1] * tile.ySize) + buffer_size_degrees: continue
-        if symax < tile.geo_t[3] + (tile.geo_t[5] * tile.xSize) + buffer_size_degrees: continue
+        if sxmin > tile.geo_t[0] + (tile.geo_t[1] * tile.xSize) + buffer_size_degrees: continue
+        if symax < tile.geo_t[3] + (tile.geo_t[5] * tile.ySize) + buffer_size_degrees: continue
         if symin > tile.geo_t[3] - buffer_size_degrees: continue
         
         #Separate polygons with list indices
