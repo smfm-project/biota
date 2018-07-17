@@ -479,9 +479,9 @@ class LoadTile(object):
             
             # Days are counted from the launch date
             if self.satellite == 'ALOS-2':
-                launch_date = dt.datetime(2014, 5, 24)
+                launch_date = dt.date(2014, 5, 24)
             else:
-                launch_date = dt.datetime(2006, 1, 24)
+                launch_date = dt.date(2006, 1, 24)
             
             # Determine the Day of Year associated with each
             unique_dates = [launch_date  + dt.timedelta(days=int(d)) for d in unique_days]
@@ -490,7 +490,7 @@ class LoadTile(object):
             dates = np.zeros_like(day_after_launch, dtype='datetime64[D]')
             dates_int = np.zeros_like(day_after_launch, dtype = np.int32)
             for day, date in zip(unique_days, unique_dates):
-                dates[day_after_launch == day] = np.datetime64(date,'D')
+	        dates[day_after_launch == day] = np.datetime64(date,'D')
                 dates_int[day_after_launch == day] = np.int(np.datetime64(date,'D').astype(dt.date).strftime('%Y%m%d'))
             
             # Save output to class
