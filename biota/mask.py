@@ -196,6 +196,7 @@ def maskArray(tile, array, classes = [], buffer_size = 0.):
         
     return mask
 
+
 def maskRaster(tile, raster, classes = [], buffer_size = 0.):
     '''
     Extract a mask from a GeoTiff based on specified classes
@@ -217,24 +218,11 @@ def maskRaster(tile, raster, classes = [], buffer_size = 0.):
     raster = os.path.expanduser(raster)
     assert os.path.exists(raster), "GeoTiff file %s does not exist in the file system."%raster
     
-    # Open GeoTiff and get metadata
-    ds_source = gdal.Open(raster)
-    proj_source = biota.IO.loadProjection(raster)
+    # Load raster + reporject to match tile
+    reampled_image = biota.IO.loadRaster(raster, tile)
     
-    # Create output file matching ALOS tile
-    gdal_driver = gdal.GetDriverByName('MEM')
-    ds_dest = gdal_driver.Create('', tile.ySize, tile.xSize, 1, 3)
-    ds_dest.SetGeoTransform(tile.geo_t)
-    ds_dest.SetProjection(tile.proj)
-       
-    # Reproject input GeoTiff to match the ALOS tile
-    gdal.ReprojectImage(ds_source, ds_dest, proj_source, tile.proj, gdal.GRA_NearestNeighbour)
-    
-    # Load resampled image into memory
-    tif_resampled = ds_dest.GetRasterBand(1).ReadAsArray()
-        
     # Identify pixels that are classes to be masked
-    mask = maskArray(tile, tif_resampled, classes = classes, buffer_size = buffer_size)
+    mask = maskArray(tile, reampled_image, classes = classes, buffer_size = buffer_size)
     
     return mask
 

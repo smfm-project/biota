@@ -54,6 +54,38 @@ def loadSize(filepath):
     return ds.RasterYSize, ds.RasterXSize
 
 
+def loadRaster(raster, tile, resampling = 0):
+    """
+    Loads a raster image (e.g. GeoTiff), reprojecting to match a tile.
+    
+    Args:
+        raster: path to raster file (string)
+        tile: A tile from biota.LoadTile()
+        resampling: Optionally specify a gdal resampling type. Defaults to gdal.GRA_NearestNeighbour.
+        
+    Returns:
+        A numpy array matching tile
+    """
+    
+    from osgeo import gdal
+    
+    # Open GeoTiff and get metadata
+    ds_source = gdal.Open(raster)
+    proj_source = loadProjection(raster)
+    
+    # Create output file matching ALOS tile
+    gdal_driver = gdal.GetDriverByName('MEM')
+    ds_dest = gdal_driver.Create('', tile.ySize, tile.xSize, 1, 3)
+    ds_dest.SetGeoTransform(tile.geo_t)
+    ds_dest.SetProjection(tile.proj)
+       
+    # Reproject input GeoTiff to match the ALOS tile
+    gdal.ReprojectImage(ds_source, ds_dest, proj_source, tile.proj, resampling)
+    
+    # Load resampled image into memory
+    resampled = ds_dest.GetRasterBand(1).ReadAsArray()
+    
+    return resampled
 
 def outputGeoTiff(data, filename, geo_t, proj, output_dir = os.getcwd(), dtype = 6, nodata = None):
     """
