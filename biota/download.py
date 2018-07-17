@@ -43,8 +43,10 @@ def generateURL(lat, lon, year, large_tile = False):
         # Filename patterns are different for ALOS-1/ALOS-2
         if year <= 2010:
             url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS/ext1/PALSAR_MSC/25m_MSC/%s/%s_%s_MOS.tar.gz'
-        else:
+        elif year > 2010 and year < 2017:
             url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.tar.gz'
+        else:
+            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext2/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.tar.gz'	  
                 
         url = url%(str(year), tile_name, str(year)[-2:])
 
