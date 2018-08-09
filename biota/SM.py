@@ -153,8 +153,8 @@ def getSM(tile, search_days = 7):
         # Interpolate through time and draw out the central value, and zoom to scale of tile
         sm_resampled = _loadSM(tile, dt.datetime(1970,1,1).date() + dt.timedelta(date), search_days = search_days)
         
-        # Only output soil moisture where > 50 % data exists        
-        if float((sm_resampled.mask[dates == date]).sum()) / (sm_resampled.mask[dates == date]).shape[0] <= 0.5:
+        # Only output soil moisture where > 25 % data exists        
+        if float((sm_resampled.mask[dates == date]).sum()) / (sm_resampled.mask[dates == date]).shape[0] <= 0.25:
             out[dates == date] = np.ma.mean(sm_resampled[dates == date])        
     
     # Add the mask

@@ -75,7 +75,7 @@ def loadRaster(raster, tile, resampling = 0):
     
     # Create output file matching ALOS tile
     gdal_driver = gdal.GetDriverByName('MEM')
-    ds_dest = gdal_driver.Create('', tile.ySize, tile.xSize, 1, 3)
+    ds_dest = gdal_driver.Create('', tile.xSize, tile.ySize, 1, 3)
     ds_dest.SetGeoTransform(tile.geo_t)
     ds_dest.SetProjection(tile.proj)
        
