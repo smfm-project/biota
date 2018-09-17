@@ -53,3 +53,9 @@ If successful, you should now be able to import ``biota`` in Python:
 .. code-block:: python
     
     import biota
+
+To avoid having to reference the full path of the Python scripts in biota when using command line tools, add the following line to your .bashrc file: 
+
+.. code-block:: console
+    
+    echo "alias biota='_biota() { python ~/biota/biota/"$1".py $(shift; echo "$@") ;}; _biota'" >> ~/.bashrc

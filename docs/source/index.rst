@@ -26,6 +26,7 @@ Contents:
    :maxdepth: 1
     
    setup.rst
+   command_line.rst
    worked_example_1.rst
    worked_example_2.rst
    worked_example_3.rst
