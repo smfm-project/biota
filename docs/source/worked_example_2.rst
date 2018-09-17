@@ -421,8 +421,3 @@ Visualised in QGIS, the resulting biomass and woody cover maps for Kilwa Distric
    :scale: 50 %
    :align: center
    
-And woody cover looks like:
-
-.. figure:: images/woodycover_kilwa.png
-   :scale: 50 %
-   :align: center
