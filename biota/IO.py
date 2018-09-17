@@ -146,8 +146,8 @@ def buildMap(fig, ax, data, lat, lon, title ='', cbartitle = '', vmin = None, vm
     
     ax.set_yticks(np.arange(0,data.shape[0],data.shape[0]/10))
     ax.set_xticks(np.arange(0,data.shape[1],data.shape[1]/10))
-    ax.set_yticklabels(np.arange(lat, lat - 1.01, - 0.1))
-    ax.set_xticklabels(np.arange(lon, lon + 1.01, 0.1))
+    ax.set_yticklabels(["%.1f" %i for i in np.arange(lat, lat - 1.01, - 0.1)])
+    ax.set_xticklabels(["%.1f" %i for i in np.arange(lon, lon + 1.01, 0.1)])
     ax.tick_params(labelsize = labelsize)
     ax.set_ylabel('Latitude', fontsize = labelsize)
     ax.set_xlabel('Longitude', fontsize = labelsize)

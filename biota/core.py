@@ -584,10 +584,10 @@ class LoadTile(object):
         
         if show:
             # Different display settings depending on options
-            if polarisation == 'HH' and units == 'natural': vmin, vmax = 0, 0.15
-            if polarisation == 'HV' and units == 'natural': vmin, vmax = 0, 0.06
-            if polarisation == 'HH' and units == 'decibels': vmin, vmax = -15, -5
-            if polarisation == 'HV' and units == 'decibels': vmin, vmax = -20, -10
+            if polarisation == 'HH' and units == 'natural units': vmin, vmax = 0, 0.15
+            if polarisation == 'HV' and units == 'natural units': vmin, vmax = 0, 0.06
+            if polarisation == 'HH' and units == 'dB': vmin, vmax = -15, -5
+            if polarisation == 'HV' and units == 'dB': vmin, vmax = -20, -10
             
             self.__showArray(gamma0, title = 'Gamma0 %s'%polarisation, cbartitle = units, vmin = vmin, vmax = vmax, cmap = 'Greys_r')
 
@@ -612,12 +612,13 @@ class LoadTile(object):
                 
             else:       
                 raise ValueError("Unknown satellite named '%s'. self.satellite must be 'ALOS-1' or 'ALOS-2'."%self.satellite)
-            
-            # Keep masked values tidy
-            AGB.data[self.mask] = self.nodata
-            
+                        
             # Save output to class
             self.AGB = AGB
+        
+        # Keep masked values tidy
+        #self.AGB.data[self.mask] = self.nodata
+        self.AGB.mask = self.mask
         
         if output: self.__outputGeoTiff(self.AGB, 'AGB')
         
@@ -647,12 +648,13 @@ class LoadTile(object):
                 contiguous_area, _ = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
                 
                 WoodyCover.data[contiguous_area == False] = False
-            
-            WoodyCover.data[self.mask] = False
-            WoodyCover.mask = self.mask
-            
+                        
             # Save output to class
             self.WoodyCover = WoodyCover
+        
+        # Keep masked values tidy
+        #self.WoodyCover.data[self.mask] = False
+        self.WoodyCover.mask = self.mask
         
         if output: 
             
@@ -683,11 +685,12 @@ class LoadTile(object):
             # Get areas that meet that threshold
             _, ForestPatches = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
             
-            # Tidy up masked pixels     
-            ForestPatches.data[np.ma.getmaskarray(ForestPatches)] = self.nodata
-            
             # Save output to class
             self.ForestPatches = ForestPatches
+                  
+        # Tidy up masked pixels      
+        #ForestPatches.data[np.ma.getmaskarray(self.ForestPatches)] = self.nodata
+        self.ForestPatches.mask = self.mask       
         
         if output: self.__outputGeoTiff(self.ForestPatches * 1, 'ForestPatches', dtype = gdal.GDT_Int32)
         
