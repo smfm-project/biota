@@ -58,9 +58,9 @@ The new object called ``tile_2007`` has a range of attributes. These can be acce
     '~/DATA/S05E035_07_MOS/'
     >>> tile_2007.satellite
     'ALOS-1'
-    >>> tile_2007.xSize, data_2007.ySize # Raster size, in pixels
+    >>> tile_2007.xSize, tile_2007.ySize # Raster size, in pixels
     (4500, 4500)
-    >>> tile_2007.xRes, data_2007.yRes # Pixel resolution in meters
+    >>> tile_2007.xRes, tile_2007.yRes # Pixel resolution in meters
     (24.401, 24.579)
 
 **Advanced:** The tile also contains projection information for interaction with ``GDAL``:
@@ -109,7 +109,7 @@ The ``biota`` module is programmed to calibrate ALOS mosaic data to interpretabl
     [False False False ..., False False False]],
         fill_value = 1e+20)
 
-By default the image loaded is 'HV' polarised in 'natural' units. It's also possible to specify options for the polarisation ('HV' or 'HH') and the units ('natural' or 'decibels') as follows:
+By default the image loaded is 'HV' polarised in 'natural' units. It's also possible to specify options for the polarisation ('HV' *[default]* or 'HH') and the units ('natural' *[default]* or 'decibels') as follows:
 
 .. code-block:: python
     
@@ -125,6 +125,8 @@ If we want to visualise this data, we can run:
 Which produces the following image:
 
 .. figure:: images/gamma0.png
+   :scale: 50 %
+   :align: center
 
 If we want to save this data to a geoTiff, we can run:
 
@@ -146,7 +148,9 @@ In a similar way to loading gamma0 backscatter, we can show maps of AGB.
 Areas in darker green show denser forest:
 
 .. figure:: images/agb.png
-
+   :scale: 50 %
+   :align: center
+   
 Like the previous function (and most others in the ``biota`` module), we can output a GeoTiff as follows:
 
 .. code-block:: python
@@ -171,8 +175,10 @@ and output:
     >>> woodycover_2007 = tile_2007.getWoodyCover(output = True)
 
 .. figure:: images/woodycover.png
+   :scale: 50 %
+   :align: center
    
-By default ``biota`` will use a generic definition of forest of 10 tC/ha with no minimum area. In the next section we'll discuss how this can be customised.
+By default ``biota`` will use a generic definition of forest of 10 tC/ha with no minimum area. In the next section we'll discuss how this and other forest definitons can be customised.
             
 Further options when loading an ALOS tile
 -----------------------------------------
@@ -183,43 +189,152 @@ Further options when loading an ALOS tile
 Speckle filtering
 ~~~~~~~~~~~~~~~~~
 
-Radar data are often very noisy as the result of 'radar speckle', which can be supressed with a speckle filter. The ``biota`` module has an Enhanced Lee speckle filter, which can be applied to the ALOS tile by loading it as follows:
+Radar data are often very noisy as the result of 'radar speckle', which can be supressed with a speckle filter. The ``biota`` module has an Enhanced Lee speckle filter, which can be applied to the ALOS tile. By default, no filtering is applied. The speckle filter should be specified on loading the tile:
 
 .. code-block:: python
     
     >>> tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True)
 
+Filtering results in an AGB map is noticeably less noisy than those from unfiltered ALOS image.
+    
+.. code-block:: python
+    
+    >>> tile_2007.getAGB(show = True)
+
+.. figure:: images/agb_filt.png
+   :scale: 50 %
+   :align: center
+   
 Downsampling
 ~~~~~~~~~~~~
 
-Data volumes can be reduced through downsampling. This comes at a cost to resolution, but does have the positive effect of reducing speckle noise. For example, to halve the resolution of output images, set the parameter ``downsample_factor`` to 2:
+Data volumes can be reduced through downsampling.  This comes at a cost to resolution, but does have the positive effect of reducing speckle noise. By default, no downsampling is appied. For example, to halve the resolution of output images, set the parameter ``downsample_factor`` to 2:
 
 .. code-block:: python
     
     >>> tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, downsample_factor = 2)
 
+With a ``downsample_factor`` of 2, the resolution of the image is halved:
+    
+.. code-block:: python
+    
+    >>> tile_2007.getAGB(show = True)
+    
+.. figure:: images/agb_downsample.png
+   :scale: 50 %
+   :align: center
+   
 Changing forest definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For many purposes it's useful to classify regions into forest and nonforest areas. To achieve this with ``biota`` a threshold AGB (``forest_threshold``) and a minimum area (``area_threshold``) that separate forest from nonforest can be specified. For example, for a forest definition of 15 tC/ha with a minimum area of 1 hecatare:
+For many purposes it's useful to classify regions into forest and nonforest areas. To achieve this with ``biota`` a threshold AGB (``forest_threshold``) and a minimum area (``area_threshold``) that separate forest from nonforest can be specified. By default the forest_threshold is 10 tC/ha and the area_threshold is 0 ha. For example, for a forest definition of 15 tC/ha with a minimum area of 1 hecatare:
 
 .. code-block:: python
     
     >>> tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, forest_threshold = 15, area_threshold = 1)
 
+A higher ``forest_threshold`` or ``minimum_area`` results in a reduced forest area:
+    
+.. code-block:: python
+    
+    >>> tile_2007.getWoodyCover(show = True)
+    
+.. figure:: images/woodycover_definition.png
+   :scale: 50 %
+   :align: center
+
 Changing output directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The current working directory may not be the best place to output GeoTiff files. An output directory can be specified as follows:
+By default, GeoTiffs are output to the current working directory. This may not be the best place to output GeoTiff files, a different output directory can be specified as follows:
 
 .. code-block:: python
     
-    >>> tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, output_dir = '~/outputs/)
+    >>> tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, output_dir = '~/output_data/)
 
 Masking data
 ------------
 
-[To follow]
+The ALOS mosaic product is supplied with a basic mask indicating locations of radar show and large water bodies. For many applications this may not be sufficient. For example, radar backscatter from ALOS is strongly influenced by soil moisture changes, which will be particularly severe around rivers.
+
+For some biomass mapping applications and for change detection, we might want to mask out rivers or other features. The ``biota`` library can generate an updated mask with either classified GeoTiffs or shapefiles.
+
+Masking with a shapefile
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+For this example, we'll use a publically available shapefile of inland water in Tanzania from `Diva GIS`_. Download the shapefile `here`_, unzip it, and save it somewhere accessible.
+
+.. _Diva GIS: http://www.diva-gis.org
+.. _here: http://biogeo.ucdavis.edu/data/diva/wat/TZA_wat.zip
+
+This can be done on the command line as follows:
+
+.. code-block:: console
+    
+    mkdir auxillary_data
+    cd auxillary_data
+    wget http://biogeo.ucdavis.edu/data/diva/wat/TZA_wat.zip
+    unzip TZA_wat.zip
+    
+We can use this shapefile to update the mask in ``biota``, applying a 250 m mask around river lines, as follows:
+
+.. code-block:: python
+    
+    >>> tile_2007.updateMask('auxillary_data/TZA_water_lines_dcw.shp', buffer_size = 250)
+
+River lines and 250 m buffer now appear in white in the resultant image:
+
+.. code-block:: python
+    
+    >>> tile_2007.getAGB(show = True)
+    
+.. figure:: images/agb_mask.png
+   :scale: 50 %
+   :align: center
+   
+Masking with a GeoTiff
+~~~~~~~~~~~~~~~~~~~~~~
+
+Perhaps we aren't interested in mapping known agricultural land, we might want to mask out areas of agriculture from a land cover map.
+
+Here we'll use the `ESA CCI`_ land cover map to locate areas of agriculture. The 2007 map is available to download from `ESA`_.
+
+.. _ESA CCI: https://www.esa-landcover-cci.org/
+.. _ESA: ftp://geo10.elie.ucl.ac.be/v207/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2007-v2.0.7.tif
+
+With the command line:
+
+.. code-block:: console
+
+    cd auxillary_data
+    wget ftp://geo10.elie.ucl.ac.be/v207/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2007-v2.0.7.tif
+    
+In the ESA CCI data product the values ``10``, ``20``, ``30``, and ``40`` correspond to locations with agriculture. We can mask out this class in ``biota`` as follows:
+
+.. code-block:: python
+    
+    >>> tile_2007.updateMask('auxillary_data/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2007-v2.0.7.tif', classes = [10, 20, 30])
+
+Areas to the south-west of the image now appear in the white mask.
+    
+.. code-block:: python
+    
+    >>> tile_2007.getAGB(show = True)
+    
+.. figure:: images/agb_mask2.png
+   :scale: 50 %
+   :align: center
+   
+Note, that the ``updateMask()`` function added to the previous water mask rather than replacing it. ``updateMask()`` can be run multiple times to make use of multiple datasets.
+
+Resetting a mask
+~~~~~~~~~~~~~~~~
+
+To return the mask to it's original state, run:
+
+.. code-block:: python
+
+    tile_2007.resetMask()
 
 Putting it all together
 -----------------------
@@ -244,6 +359,9 @@ Using the commands above, we can create a script to automate the pre-processing 
     # Load the ALOS tile with specified options
     tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
     
+    # Add river lines to the mask with a 250 m buffer
+    tile_2007.updateMask('auxillary_data/TZA_water_lines_dcw.shp', buffer_size = 250)
+
     # Calculate gamma0 and output to GeoTiff
     gamma0_2007 = tile_2007.getGamma0(output = True)
     
@@ -272,15 +390,21 @@ Save this file (e.g. ``process_2007.py``), and run on the command line:
     # Define and output location
     output_dir = '~/outputs/'
     
-    for latitude in range(35, 40):
-        for longitude in range(-10,-5):
-        
+    for latitude in range(-9,-7):
+        for longitude in range(38, 40):
+            
+            # Print progress
+            print 'Doing latitude: %s, longitude: %s'%(str(latitude), str(longitude))
+            
             # Load the ALOS tile with specified options
             try:
                 tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
             
             except:
                 continue
+
+            # Add river lines to the mask with a 250 m buffer
+            tile_2007.updateMask('auxillary_data/TZA_water_lines_dcw.shp', buffer_size = 250)
             
             # Calculate gamma0 and output to GeoTiff
             gamma0_2007 = tile_2007.getGamma0(output = True)
@@ -290,5 +414,15 @@ Save this file (e.g. ``process_2007.py``), and run on the command line:
 
             # Calculate Woody cover and output to GeoTiff
             gamma0_2007 = tile_2007.getWoodyCover(output = True)
-    
 
+Visualised in QGIS, the resulting biomass and woody cover maps for Kilwa District are:
+
+.. figure:: images/worked_example_2_output.png
+   :scale: 50 %
+   :align: center
+   
+And woody cover looks like:
+
+.. figure:: images/woodycover_kilwa.png
+   :scale: 50 %
+   :align: center

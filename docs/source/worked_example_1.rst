@@ -47,12 +47,13 @@ These options can be encoded as follows:
 
 As we didn’t specify the option ``-o`` (``--output``), data will output to the current working directory. We also included ``-r`` (``--remove``) flag, meaning that intermediate .zip files downloaded from the internet will be deleted after download.
 
-Wait for the two files (2007 and 2010) to finish downloading before proceeding to the next step. By the time the processing is complete, your ``DATA/`` directory should contain the following files (show files in the currenty working directory with the command ``ls``).
+Wait for the two files (2007 and 2010) to finish downloading before proceeding to the next step. By the time the processing is complete, your ``DATA/`` directory should contain the following new directories (show files in the current working directory with the command ``ls``).
 
 .. code-block:: console
+    
+    S05E035_07_MOS
+    S05E035_10_MOS
 
-    FILE1
-    FILE2
 
 
 
