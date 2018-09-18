@@ -75,29 +75,40 @@ Like with a single tile, ``biota`` can display and output AGB change to GeoTiff:
     >>> agb_change = tile_change.getAGBChange(show = True, output = True)
 
 .. figure:: images/agb_change.png
-
+   :scale: 50 %
+   :align: center
+   
 The predominance of red colours in this tile indicate a general reduction to AGB, with areas of dark red showing locations of deforestation.
 
 Classifying change type
 -----------------------
 
-There are 7 change types in ``biota``, each of which is defined as a number 0 to 6. Change types are:
+Changes are classified based on a series of thresholds:
 
-* Deforesation [1]
-* Degradation [2]
-* Minor loss [3]
-* Minor gain [4]
-* Growth [5]
-* Afforestation [6]
-* Non-forest [0]
+* ``forest_threshold``: The minimum AGB that defines a forest area (tC/ha).
+* ``change_area_threshold``: The minimum area over which a change must ocurr (ha).
+* ``change_magnitude_threshold``: The minimum absolute change of AGB that defines a change event (tC/ha).
+* ``change_intensity_threshold``: The minimum proportional change of AGB that defines a change event (0-1).
+
+There are 7 change types described in ``biota``, each of which is defined as a number 0 to 6. Change types are:
+
+* Deforesation: A loss of AGB from that crosses the ``forest_threshold``. [1]
+* Degradation: A loss of AGB in a location above the ``forest_threshold`` in both images.  [2]
+* Minor loss: A loss of AGB that does not cross the ``change_area_threshold``, ``change_magnitude_threshold``, or ``change_intensity_threshold``. [3]
+* Minor gain: A gain of AGB that does not cross the ``change_area_threshold``, ``change_magnitude_threshold``, or ``change_intensity_threshold``. [4]
+* Growth [5]: A gain of AGB in a location above the ``forest_threshold`` in both images.  [2]
+* Afforestation: A gain of AGB that crosses the ``forest_threshold``.   [6]
+* Non-forest: Below ``forest_threshold`` in both images. [0]
 
 To classify each pixel by its change type, use the function getChangeType():
 .. code-block:: python
 
-    >>> change_types = tile_change.getChangeType(show = True, output = True)
+    >>> change_types = tile_change.getChangeType(show = True)
 
 .. figure:: images/change_type_raw.png
-
+   :scale: 50 %
+   :align: center
+   
 Further options for calculating change
 --------------------------------------
 
@@ -106,7 +117,7 @@ Like for a single ALOS tile, ``biota`` offers a range of parameters for detectio
 Change area threshold
 ~~~~~~~~~~~~~~~~~~~~~
 
-Setting this to 1 requires a change to occur over at least 1 hectare for the change to be counted.
+Setting this to 1 requires a change to occur over at least 1 hectare for the change to be counted. The default of ``change_area_threshold`` is 0 ha.
 
 .. code-block:: python
     
@@ -116,7 +127,7 @@ Setting this to 1 requires a change to occur over at least 1 hectare for the cha
 Change magnitude threshold
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Setting this to 5 requires a change of magntiude at least 5 tC/ha to occur before being counted.
+Setting this to 5 requires a change of magntiude at least 5 tC/ha to occur before being counted. The default of ``change_magnitude_threshold`` is 0 tC/ha.
 
 
 .. code-block:: python
@@ -126,12 +137,17 @@ Setting this to 5 requires a change of magntiude at least 5 tC/ha to occur befor
 Change intensity threshold
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Setting this to 0.2 requires a change of 20 % or greater of AGB to be classified as deforestation, degradation, growth, or afforestation.
+Setting this to 0.2 requires a change of 20 % or greater of AGB to be classified as deforestation, degradation, growth, or afforestation. The default of ``change_intensity_threshold`` is 0.
 
 .. code-block:: python
     
     >>> tile_change = biota.LoadChange(tile_2007, tile_2010, change_intensity_threshold = 0.2)
-    
+
+Change forest threshold
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Changes will also be sensitive to the forest definitions used when loading individual tiles. The ``forest_threshold`` should be itentical in both of the loaded tiles, with stricter forest definitions typically reducing change areas:
+
 Changing output directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -144,7 +160,7 @@ The output directory for GeoTiffs can be specified in a similar way to a single 
 Classifying change type with options
 ------------------------------------
 
-If we repeat the classification of change type, but this time with a minimum change area (1 hectare) and a minimum magnitude (5 tC/ha), the mapped change shows less noise:
+If we repeat the classification of change type, but this time with a ``change_area_threshold`` (1 hectare) and a ``change_magnitude_threshold`` (5 tC/ha), the mapped change shows significantly reduced noise:
 
 .. code-block:: python
     
@@ -152,11 +168,29 @@ If we repeat the classification of change type, but this time with a minimum cha
     >>> tile_change.getChangeType(show = True)
 
 .. figure:: images/change_type_options.png
-
+   :scale: 50 %
+   :align: center
+   
 Masking data
 ------------
 
-Masks to the change layer are drawn from the two input tiles. Where either one of the input tiles are masked, the change output will also be masked. This means that masks to water bodies etc. should be applied to the LoadTile() step.
+Masks to the change layer are drawn from the two input tiles. Where either one of the input tiles are masked, the change output will also be masked. This means that masks to water bodies etc. should be applied at the ``LoadTile()`` step.
+
+.. code-block:: python
+   
+   tile_2007.updateMask('auxillary_data/TZA_water_lines_dcw.shp', buffer_size = 250)
+   tile_change = biota.LoadChange(tile_2007, tile_2010)
+   tile_change.getAGBChange(show = True)
+
+    
+    
+
+Other functionality
+-------------------
+
+
+
+
 
 Putting it all together
 -----------------------
@@ -180,6 +214,9 @@ Putting it all together
     tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
     
     tile_2010 = biota.LoadTile(data_dir, latitude, longitude, 2010, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
+    
+    # Add river lines to the mask with a 250 m buffer
+    tile_2007.updateMask('auxillary_data/TZA_water_lines_dcw.shp', buffer_size = 250)
     
     # Load change between tiles, with options
     tile_change = biota.LoadChange(tile_2007, tile_2010, change_area_threshold = 1, change_magnitude_threshold = 5)
@@ -209,24 +246,37 @@ Save this file (e.g. ``process_change.py``), and run on the command line:
     # Define and output location
     output_dir = '~/outputs/'
     
-    for latitude in range(35, 40):
-        for longitude in range(-10,-5):
-        
+    for latitude in range(-9,-7):
+        for longitude in range(38, 40):
+            
+            # Update progress 
+            print 'Doing latitude: %s, longitude: %s'%(str(latitude), str(longitude))
+            
             # Load the ALOS tile with specified options
             try:
-                tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
-            
-                tile_2010 = biota.LoadTile(data_dir, latitude, longitude, 2010, lee_filter = True, forest_threshold = 15., area_threshold = 1, output_dir = output_dir)
-                
-                tile_change = biota.LoadChange(tile_2007, tile_2010, change_area_threshold = 1, change_magnitude_threshold = 5)
+                tile_2007 = biota.LoadTile(data_dir, latitude, longitude, 2007, lee_filter = True, forest_threshold = 15., area_threshold = 1)
+                tile_2010 = biota.LoadTile(data_dir, latitude, longitude, 2010, lee_filter = True, forest_threshold = 15., area_threshold = 1)
+                tile_change = biota.LoadChange(tile_2007, tile_2010, output_dir = output_dir)
                 
             except:
                 continue
+            
+            # Add river lines to the mask with a 250 m buffer
+            tile_2007.updateMask('auxillary_data/TZA_water_lines_dcw.shp', buffer_size = 250)
+            
+            # Load change between tiles, with options
+            tile_change = biota.LoadChange(tile_2007, tile_2010, output_dir = output_dir)
             
             # Calculate AGB change and output
             agb_change = tile_change.getAGBChange(output = True)
             
             # Calculate change type and output
             change_type = tile_change.getChangeType(output = True)
+
+Visualised in QGIS, the resulting AGB change and change type maps for Kilwa District are:
+
+.. figure:: images/worked_example_3_output.png
+   :scale: 50 %
+   :align: center
 
 
