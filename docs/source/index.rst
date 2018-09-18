@@ -7,7 +7,9 @@ Welcome to biota's documentation!
 =================================
 
 .. figure:: images/alos_examples.png
-
+   :scale: 50 %
+   :align: center
+   
 The BIOmass Tool for Alos (``biota``) is a Python module that uses data from JAXA's ALOS mosaic product to generate maps of:
 
 * Aboveground biomass
