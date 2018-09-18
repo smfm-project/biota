@@ -85,20 +85,37 @@ Classifying change type
 
 Changes are classified based on a series of thresholds:
 
-* ``forest_threshold``: The minimum AGB that defines a forest area (tC/ha).
-* ``change_area_threshold``: The minimum area over which a change must ocurr (ha).
-* ``change_magnitude_threshold``: The minimum absolute change of AGB that defines a change event (tC/ha).
-* ``change_intensity_threshold``: The minimum proportional change of AGB that defines a change event (0-1).
++--------------------------------+---------------------------------------------------------------------------+
+| Threshold                      | Description                                                               |
++--------------------------------+---------------------------------------------------------------------------+
+| ``forest_threshold``           | The minimum AGB that defines a forest area (tC/ha).                       |
++--------------------------------+---------------------------------------------------------------------------+
+| ``change_area_threshold``      | The minimum area over which a change must ocurr (ha).                     |
++--------------------------------+---------------------------------------------------------------------------+
+| ``change_magnitude_threshold`` | The minimum absolute change of AGB that defines a change event (tC/ha).   |
++--------------------------------+---------------------------------------------------------------------------+
+| ``change_intensity_threshold`` | The minimum proportional change of AGB that defines a change event (0-1). |
++--------------------------------+---------------------------------------------------------------------------+
 
 There are 7 change types described in ``biota``, each of which is defined as a number 0 to 6. Change types are:
 
-* Deforesation: A loss of AGB from that crosses the ``forest_threshold``. [1]
-* Degradation: A loss of AGB in a location above the ``forest_threshold`` in both images.  [2]
-* Minor loss: A loss of AGB that does not cross the ``change_area_threshold``, ``change_magnitude_threshold``, or ``change_intensity_threshold``. [3]
-* Minor gain: A gain of AGB that does not cross the ``change_area_threshold``, ``change_magnitude_threshold``, or ``change_intensity_threshold``. [4]
-* Growth [5]: A gain of AGB in a location above the ``forest_threshold`` in both images.  [2]
-* Afforestation: A gain of AGB that crosses the ``forest_threshold``.   [6]
-* Non-forest: Below ``forest_threshold`` in both images. [0]
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Change class  | Pixel value | Description                                                                                                                         |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Deforestation | 1           | A loss of AGB from that crosses the ``forest_threshold``.                                                                           |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Degradation   | 2           | A loss of AGB in a location above the ``forest_threshold`` in both images.                                                          |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Minor Loss    | 3           | A loss of AGB that does not cross the ``change_area_threshold``, ``change_magnitude_threshold``, or ``change_intensity_threshold``. |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Minor Gain    | 4           | A gain of AGB that does not cross the ``change_area_threshold``, ``change_magnitude_threshold``, or ``change_intensity_threshold``. |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Growth        | 5           | A gain of AGB in a location above the ``forest_threshold`` in both images.                                                          |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Aforestation  | 6           | A gain of AGB that crosses the ``forest_threshold``.                                                                                |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
+| Nonforest     | 0           | Below ``forest_threshold`` in both images.                                                                                          |
++---------------+-------------+-------------------------------------------------------------------------------------------------------------------------------------+
 
 To classify each pixel by its change type, use the function getChangeType():
 .. code-block:: python
@@ -182,14 +199,10 @@ Masks to the change layer are drawn from the two input tiles. Where either one o
    tile_change = biota.LoadChange(tile_2007, tile_2010)
    tile_change.getAGBChange(show = True)
 
-    
-    
-
 Other functionality
 -------------------
 
-
-
+[To follow]
 
 
 Putting it all together
