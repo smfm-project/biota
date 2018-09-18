@@ -114,7 +114,7 @@ There are 7 change types described in ``biota``, each of which is defined as a n
 +-------------------+-----------------+-------------------------------------------------------------------------------------------------------------------------------------+
 | Aforestation      | 6               | A gain of AGB that crosses the ``forest_threshold``.                                                                                |
 +-------------------+-----------------+-------------------------------------------------------------------------------------------------------------------------------------+
-| Nonforest         | 0              | Below ``forest_threshold`` in both images.                                                                                          |
+| Nonforest         | 0               | Below ``forest_threshold`` in both images.                                                                                          |
 +-------------------+-----------------+-------------------------------------------------------------------------------------------------------------------------------------+
 
 To classify each pixel by its change type, use the function getChangeType():
