@@ -865,7 +865,9 @@ class LoadChange(object):
         if not hasattr(self, 'AGBChange'):
             
             self.AGB_change = self.tile_t2.getAGB() - self.tile_t1.getAGB()
-                        
+        
+        self.AGB_change.mask = self.mask     
+
         if output: self.__outputGeoTiff(self.AGB_change, 'AGBChange')
         
         if show: self.__showArray(self.AGB_change, title = 'AGB Change', cbartitle = 'tC/ha', vmin = -10, vmax = 10, cmap = 'RdBu')
@@ -943,14 +945,14 @@ class LoadChange(object):
             change_code[change_type['minorgain'].data] = 4
             change_code[change_type['growth'].data] = 5
             change_code[change_type['afforestation'].data] = 6
-            
-            # Keep things tidy
-            change_code[self.mask] = self.nodata_byte
-            
+                        
             # Save to class
             self.ChangeType = change_type
             self.ChangeCode = change_code
-            
+        
+        self.ChangeType.mask = self.mask     
+        self.ChangeCode.mask = self.mask    
+        
         if output: self.__outputGeoTiff(self.ChangeCode, 'ChangeType', dtype = gdal.GDT_Byte)
         
         if show:

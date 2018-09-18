@@ -234,12 +234,12 @@ def calculateLDI(tile, patch_size = 'auto', output = False, show = False):
         else:
             
             LDI.mask[n, m] = True
-            
+        
     # Output GeoTiff
     if output: biota.IO.outputGeoTiff(LDI, tile.output_pattern%'LDI', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
     
     # Display
-    if show: biota.IO.showFigure(tile, LDI, title = 'LDI', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'Oranges')
+    if show: biota.IO.showFigure(LDI, tile.lat, tile.lon, title = 'LDI', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'Oranges')
             
     return LDI
 
@@ -272,7 +272,7 @@ def calculateLDIChange(tile_change, patch_size = 'auto', output = False, show = 
     if output: biota.IO.outputGeoTiff(LDI_change, tile_change.output_pattern%'LDIChange', tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
     
     # Display
-    if show: biota.IO.showFigure(tile_change, LDI_change, title = 'LDI Change', cbartitle = '%', vmin = -25, vmax = 25, cmap = 'RdBu_r')
+    if show: biota.IO.showFigure(LDI_change, tile_change.lat, tile_change.lon, title = 'LDI Change', cbartitle = '%', vmin = -25, vmax = 25, cmap = 'RdBu_r')
     
     return LDI_change
             
@@ -317,10 +317,10 @@ def calculateTWC(tile, patch_size = 'auto', output = False, show = False):
    
     # Output GeoTiff
     if output: biota.IO.outputGeoTiff(TWC, tile.output_pattern%'TWC', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
-    
+        
     # Display
-    if show: biota.IO.showFigure(tile, TWC, title = 'TWC', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'YlGn')
-    
+    if show: biota.IO.showFigure(TWC, tile.lat, tile.lon, title = 'TWC', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'YlGn')
+        
     return TWC
 
 
@@ -353,7 +353,7 @@ def calculateWCC(tile_change, patch_size = 'auto', output = False, show = False)
     if output: biota.IO.outputGeoTiff(WCC, tile_change.output_pattern%'WCC', tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata_byte)
     
     # Display
-    if show: biota.IO.showFigure(tile_change, WCC, title = 'WCC', cbartitle = '%', vmin = -30, vmax = 30, cmap = 'RdBu')
+    if show: biota.IO.showFigure(WCC, tile_change.lat, tile_change.lon, title = 'WCC', cbartitle = '%', vmin = -30, vmax = 30, cmap = 'RdBu')
 
 
 def calculateProportionalChange(tile_change, change_type, patch_size = 'auto', output = False, show = False):
@@ -396,7 +396,7 @@ def calculateProportionalChange(tile_change, change_type, patch_size = 'auto', o
     if output: biota.IO.outputGeoTiff(change_downsampled, tile_change.output_pattern%'%sDownsampled'%change_type.title(), tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
     
     # Display
-    if show: biota.IO.showFigure(tile_change, change_downsampled, title = '%s Downsampled'%change_type.title(), cbartitle = '%', vmin = 0, vmax = 50, cmap = 'Spectral_r')
+    if show: biota.IO.showFigure(change_downsampled, tile_change.lat, tile_change.lon, title = '%s Downsampled'%change_type.title(), cbartitle = '%', vmin = 0, vmax = 50, cmap = 'Spectral_r')
 
     
     return change_downsampled
