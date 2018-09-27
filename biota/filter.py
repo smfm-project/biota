@@ -10,7 +10,7 @@ import pdb
 This file contains scripts to filter ALOS data.
 """
 
-def enhanced_lee_filter(img, window_size = 7, n_looks = 16):
+def enhanced_lee_filter(img, window_size = 5, n_looks = 16):
     '''
     Filters a masked array with the enhanced lee filter.
     
@@ -18,13 +18,15 @@ def enhanced_lee_filter(img, window_size = 7, n_looks = 16):
     
     Args:
         img: A masked array
+        window_size: Must be an odd number. Defaults to 7, which appears to give the best results.
+        n_looks: Equivalent number of looks. Defaults to 16, equivalent to native ENL of ALOS mosaic data.
     Returns:
         A masked array with a filtered verison of img
     '''
     
     assert type(window_size == int), "Window size must be an integer. You input the value: %s"%str(window_size)
     assert (window_size % 2) == 1, "Window size must be an odd number. You input the value: %s"%str(window_size)
-    assert window_size > 3, "Window size must be at least 3. You input the value: %s"%str(window_size)
+    assert window_size >= 3, "Window size must be at least 3. You input the value: %s"%str(window_size)
 
     # Inner function to calculate mean with a moving window and a masked array
     def _window_mean(img, window_size = 3):
@@ -61,11 +63,9 @@ def enhanced_lee_filter(img, window_size = 7, n_looks = 16):
     
     # Damping factor, set to 1 which is adequate for most SAR images
     k = 1
-        
     cu = (1./n_looks) ** 0.5
     cmax =  (1 + (2./n_looks)) ** 0.5
-    
-    
+        
     # Interpolate across nodata areas. No standard Python filters understand nodata values; this is a simplification
     
     indices = ndimage.distance_transform_edt(img.mask, return_distances = False, return_indices = True)
