@@ -28,7 +28,7 @@ These are two classes for loading individual tiles and compliling them into a ch
 class LoadTile(object):
     """
     An ALOS mosaic tile.
-    Mosaic tiles have the following properties:
+    Mosaic tiles have the following properties:f
 
     Attributes:
         lat:
@@ -586,8 +586,8 @@ class LoadTile(object):
             # Different display settings depending on options
             if polarisation == 'HH' and units == 'natural units': vmin, vmax = 0, 0.15
             if polarisation == 'HV' and units == 'natural units': vmin, vmax = 0, 0.06
-            if polarisation == 'HH' and units == 'dB': vmin, vmax = -15, -5
-            if polarisation == 'HV' and units == 'dB': vmin, vmax = -20, -10
+            if polarisation == 'HH' and units == 'decibels': vmin, vmax = -15, -5
+            if polarisation == 'HV' and units == 'decibels': vmin, vmax = -20, -10
             
             self.__showArray(gamma0, title = 'Gamma0 %s'%polarisation, cbartitle = units, vmin = vmin, vmax = vmax, cmap = 'Greys_r')
 
