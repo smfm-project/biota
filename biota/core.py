@@ -950,8 +950,9 @@ class LoadChange(object):
             self.ChangeType = change_type
             self.ChangeCode = change_code
         
-        self.ChangeType.mask = self.mask     
-        self.ChangeCode.mask = self.mask    
+        # TO FIX (include mask)
+        #self.ChangeType.mask = self.mask     
+        #self.ChangeCode.mask = self.mask    
         
         if output: self.__outputGeoTiff(self.ChangeCode, 'ChangeType', dtype = gdal.GDT_Byte)
         
