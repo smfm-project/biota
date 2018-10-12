@@ -951,8 +951,10 @@ class LoadChange(object):
             self.ChangeCode = change_code
         
         # TO FIX (include mask)
+        #for ct in ['nonforest', 'deforestation', 'degradation', 'minorloss', 'minorgain', 'growth', 'afforestation']: 
+        #     
         #self.ChangeType.mask = self.mask     
-        #self.ChangeCode.mask = self.mask    
+        self.ChangeCode.mask = self.mask    
         
         if output: self.__outputGeoTiff(self.ChangeCode, 'ChangeType', dtype = gdal.GDT_Byte)
         
