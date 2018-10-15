@@ -584,8 +584,8 @@ class LoadTile(object):
         
         if show:
             # Different display settings depending on options
-            if polarisation == 'HH' and units == 'natural units': vmin, vmax = 0, 0.15
-            if polarisation == 'HV' and units == 'natural units': vmin, vmax = 0, 0.06
+            if polarisation == 'HH' and units == 'natural': vmin, vmax = 0, 0.15
+            if polarisation == 'HV' and units == 'natural': vmin, vmax = 0, 0.06
             if polarisation == 'HH' and units == 'decibels': vmin, vmax = -15, -5
             if polarisation == 'HV' and units == 'decibels': vmin, vmax = -20, -10
             
