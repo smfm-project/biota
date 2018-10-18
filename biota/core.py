@@ -954,7 +954,7 @@ class LoadChange(object):
         #for ct in ['nonforest', 'deforestation', 'degradation', 'minorloss', 'minorgain', 'growth', 'afforestation']: 
         #     
         #self.ChangeType.mask = self.mask     
-        self.ChangeCode.mask = self.mask    
+        self.ChangeCode[self.mask] = 255
         
         if output: self.__outputGeoTiff(self.ChangeCode, 'ChangeType', dtype = gdal.GDT_Byte)
         
