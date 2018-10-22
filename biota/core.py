@@ -856,6 +856,28 @@ class LoadChange(object):
         if show: self.__showArray(self.SMChange, title = 'SM Change', cbartitle = 'm^2/m^2', vmin = -0.15, vmax = 0.15, cmap = 'RdBu')
         
         return self.SMChange
+    
+    def getGamma0Change(self, polarisation = 'HV', units = 'natural', output = False, show = False):
+        '''
+        '''
+        
+        # Always run processing as pol/units may change
+        self.Gamma0_change = self.tile_t2.getGamma0(polarisation = polarisation, units = units) - self.tile_t1.getGamma0(polarisation = polarisation, units = units)
+        
+        # Add combined mask
+        self.Gamma0_change.mask = self.mask     
+
+        if output: self.__outputGeoTiff(self.Gamma0_change, 'Gamma0Change')
+        
+        if show:
+            if polarisation == 'HH' and units == 'natural': vmin, vmax = -0.05, 0.05
+            if polarisation == 'HV' and units == 'natural': vmin, vmax = -0.025, 0.025
+            if polarisation == 'HH' and units == 'decibels': vmin, vmax = -5, 5
+            if polarisation == 'HV' and units == 'decibels': vmin, vmax = -2.5, 2.5
+            
+            self.__showArray(self.Gamma0_change, title = 'Gamma0 Change', cbartitle = units, vmin = vmin, vmax = vmax, cmap = 'RdGy')
+        
+        return self.Gamma0_change
         
     def getAGBChange(self, output = False, show = False):
         '''
