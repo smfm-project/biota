@@ -38,7 +38,7 @@ class LoadTile(object):
         mask:
     """
         
-    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, sm_dir = os.getcwd(), output_dir = os.getcwd()):
+    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, window_size = 5, sm_dir = os.getcwd(), output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -52,6 +52,8 @@ class LoadTile(object):
         assert (year >= 2007 and year <= 2010) or (year >= 2015 and year <= dt.datetime.now().year), "Years must be in the range 2007 - 2010 and 2015 - present. Your input year was %s."%str(year)
         assert downsample_factor >= 1 and type(downsample_factor) == int, "Downsampling factor must be an integer greater than 1."
         assert type(lee_filter) == bool, "Option lee_filter must be set to 'True' or 'False'."
+        assert type(window_size) == int, "Option window_size must be an integer."
+        assert window_size % 2 == 1, "Option window_size must be an odd integer."
         assert os.path.isdir(os.path.expanduser(data_dir)), "Specified data directory (%s) does not exist"%str(data_dir)
         assert os.path.isdir(os.path.expanduser(sm_dir)), "Specified soil moisture directory (%s) does not exist"%str(sm_dir)
         assert os.path.isdir(os.path.expanduser(output_dir)), "Specified output directory (%s) does not exist"%str(output_dir)
@@ -63,6 +65,7 @@ class LoadTile(object):
         self.year = year
         self.downsample_factor = downsample_factor
         self.lee_filter = lee_filter
+        self.window_size = window_size
         self.forest_threshold = forest_threshold
         self.area_threshold = area_threshold
         
@@ -563,7 +566,7 @@ class LoadTile(object):
         
         # Apply filter based on dB values
         if self.lee_filter:
-            gamma0 = biota.filter.enhanced_lee_filter(gamma0, n_looks = self.nLooks)
+            gamma0 = biota.filter.enhanced_lee_filter(gamma0, n_looks = self.nLooks, window_size = self.window_size)
         
         
         # Convert to natural units where specified

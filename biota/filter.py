@@ -60,7 +60,7 @@ def enhanced_lee_filter(img, window_size = 5, n_looks = 16):
         variance[variance < 0] += 0.01 # Prevents divide by zero errors.
         
         return np.sqrt(variance)[border:-border, border:-border]
-    
+        
     # Damping factor, set to 1 which is adequate for most SAR images
     k = 1
     cu = (1./n_looks) ** 0.5
@@ -83,8 +83,8 @@ def enhanced_lee_filter(img, window_size = 5, n_looks = 16):
     W[ci <= cu] = 1.
     W[ci >= cmax] = 0.
     
-    s = np.logical_and(ci > cu, ci < cmax)
-    W[s] = np.exp((-k * (ci[s] - cu)) / (cmax - ci[s]))
+    sel = np.logical_and(ci > cu, ci < cmax)
+    W[sel] = np.exp((-k * (ci[sel] - cu)) / (cmax - ci[sel]))
         
     img_filtered = (img_mean * W) + (data * (1. - W))
     
