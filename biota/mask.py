@@ -306,7 +306,7 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
         
         for part in range(n_parts):
             
-            start_index = shape.parts[part]-1
+            start_index = shape.parts[part]
             end_index = shape.parts[part+1]
             
             points = shape.points[start_index:end_index] #Map coordinates
