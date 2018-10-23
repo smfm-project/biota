@@ -68,7 +68,7 @@ def generateURL(lat, lon, year, large_tile = False):
         directory_name = '%s%s%s%s'%(hem_NS_dir, str(abs(lat_dir)).zfill(2), hem_EW_dir, str(abs(lon_dir)).zfill(3))
         
         url = url%(str(year), directory_name, tile_name, str(year)[-2:])
-        pdb.set_trace()
+        
     return url
 
 
