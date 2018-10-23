@@ -39,6 +39,13 @@ If this has functioned, on executing ``python`` in a terminal window, you should
     Please check out: http://continuum.io/thanks and https://anaconda.org
     >>> 
 
+``biota`` requires two further modules to function. Install them as in the terminal window as follows, accepting all prompts:
+
+.. code-block:: console
+    
+    conda install -c anaconda gdal
+    conda install -c conda-forge pyshp
+
 Installing biota
 ----------------
 
