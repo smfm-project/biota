@@ -6,6 +6,7 @@ import itertools
 import math
 import numpy as np
 import os
+from osgeo import gdal
 from scipy import ndimage
 import scipy.stats as stats
 import skimage.measure
@@ -41,9 +42,7 @@ class LoadTile(object):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
-        
-        from osgeo import gdal
-        
+                
         # Test that inputs are of reasonable lats/lons/years
         assert type(lat) == int, "Latitude must be an integer."
         assert lat < 90. or lat > -90., "Latitude must be between -90 and 90 degrees."
@@ -254,9 +253,7 @@ class LoadTile(object):
         """
         Return nodata values
         """
-        
-        from osgeo import gdal
-        
+                
         # Generate a nodata value
         if dtype == gdal.GDT_Byte:
             nodata = 255
@@ -403,9 +400,9 @@ class LoadTile(object):
         # Add the new raster masks to the existing mask
         self.mask = np.logical_or(self.mask, mask)
     
-        if output: self.__outputGeoTiff(self.mask, 'Mask', dtype = gdal.GDT_Byte)
+        if output: self.__outputGeoTiff(self.mask * 1, 'Mask', dtype = gdal.GDT_Byte)
         
-        if show: self.__showArray(self.mask, title = 'Mask', cmap = 'coolwarm')
+        if show: self.__showArray(self.mask * 1, title = 'Mask', cmap = 'coolwarm')
         
     def resetMask(self):
         """
@@ -467,8 +464,6 @@ class LoadTile(object):
         Loads date values into a numpy array.
         """
         
-        from osgeo import gdal
-
         # Don't rerun processing if already present in memory
         if not hasattr(self, 'date'):
             
@@ -507,9 +502,7 @@ class LoadTile(object):
         """
         Loads day of year values into a numpy array.
         """
-
-        from osgeo import gdal
-
+        
         # Don't rerun processing if already present in memory
         if not hasattr(self, 'DOY'):
                         
@@ -631,9 +624,7 @@ class LoadTile(object):
         Get woody cover, based on a threshold of AGB.
         min_area in ha
         """
-        
-        from osgeo import gdal
-        
+                
         # Don't rerun processing if already present in memory
         if not hasattr(self, 'WoodyCover'):
             
@@ -671,9 +662,7 @@ class LoadTile(object):
         """
         Get numbered forest patches, based on woody cover threshold.
         """
-        
-        from osgeo import gdal
-        
+                
         # Don't rerun processing if already present in memory
         if not hasattr(self, 'ForestPatches'):
             
@@ -702,9 +691,7 @@ class LoadTile(object):
         """
         Output a GeoTiff file.
         """
-        
-        from osgeo import gdal
-        
+                
         # Generate a standardised filename
         filename = self.output_pattern%output_name
         
@@ -731,9 +718,7 @@ class LoadChange(object):
         '''
         Initialise
         '''
-        
-        from osgeo import gdal
-        
+                
         self.tile_t1 = tile_t1
         self.tile_t2 = tile_t2
         
@@ -808,9 +793,7 @@ class LoadChange(object):
         """
         Return nodata values
         """
-        
-        from osgeo import gdal
-        
+                
         # Generate a nodata value
         if dtype == gdal.GDT_Byte:
             nodata = 255
@@ -829,10 +812,10 @@ class LoadChange(object):
         
         # Add the new raster masks to the existing mask
         self.mask = np.logical_or(self.mask, mask)
-    
-        if output: self.__outputGeoTiff(self.mask, 'Mask', dtype = gdal.GDT_Byte)
+                
+        if output: self.__outputGeoTiff(self.mask * 1, 'Mask', dtype = gdal.GDT_Byte)
         
-        if show: self.__showArray(self.mask, title = 'Mask', cmap = 'coolwarm')
+        if show: self.__showArray(self.mask * 1, title = 'Mask', cmap = 'coolwarm')
         
     def resetMask(self):
         """
@@ -906,9 +889,7 @@ class LoadChange(object):
             intensity_threshold = threshold of proportional change with which to accept a change as real
             area_threshold
         '''
-        
-        from osgeo import gdal
-        
+                
         # Only run processing if not already done
         if not hasattr(self, 'ChangeType'):
 
