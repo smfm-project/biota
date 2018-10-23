@@ -274,7 +274,7 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
     if field != None:
         
         shapes = shapes[getField(shp, field) == value]
-            
+    
     # For each shape in shapefile...
     for n, shape in enumerate(shapes):
                 
@@ -298,18 +298,24 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
         if symax < tile.geo_t[3] + (tile.geo_t[5] * tile.ySize) + buffer_size_degrees: continue
         if symin > tile.geo_t[3] - buffer_size_degrees: continue
         
-        
         #Separate polygons with list indices
         n_parts = len(shape.parts) #Number of parts
         indices = shape.parts #Get indices of shapefile part starts
         indices.append(len(shape.points)) #Add index of final vertex
         
+        # Catch to allow use of point shapefiles, which don't have parts 
+        if shape.shapeType == 1 or shape.shapeType == 11:
+            n_parts = 1
+            points = shape.points
+        
         for part in range(n_parts):
             
-            start_index = shape.parts[part]
-            end_index = shape.parts[part+1]
+            if shape.shapeType != 1 and shape.shapeType != 11:
+                
+                start_index = shape.parts[part]
+                end_index = shape.parts[part+1]
+                points = shape.points[start_index:end_index] #Map coordinates               
             
-            points = shape.points[start_index:end_index] #Map coordinates
             pixels = [] #Pixel coordinantes
             
             # Transform coordinates to pixel values
