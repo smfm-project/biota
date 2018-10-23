@@ -277,10 +277,16 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
             
     # For each shape in shapefile...
     for n, shape in enumerate(shapes):
-        
-        import pdb; pdb.set_trace()
+                
         # Get shape bounding box
-        sxmin, symin, sxmax, symax = shape.bbox
+        if shape.shapeType == 1 or shape.shapeType == 11:
+            # Points don't have a bbox, calculate manually
+            sxmin = np.min(np.array(shape.points)[:,0])
+            sxmax = np.max(np.array(shape.points)[:,0])
+            symin = np.min(np.array(shape.points)[0,:])
+            symax = np.max(np.array(shape.points)[0,:])   
+        else:
+            sxmin, symin, sxmax, symax = shape.bbox
         
         # Transform bounding box points
         sxmin, symin, z = coordTransform.TransformPoint(sxmin, symin)
@@ -292,6 +298,7 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
         if symax < tile.geo_t[3] + (tile.geo_t[5] * tile.ySize) + buffer_size_degrees: continue
         if symin > tile.geo_t[3] - buffer_size_degrees: continue
         
+        
         #Separate polygons with list indices
         n_parts = len(shape.parts) #Number of parts
         indices = shape.parts #Get indices of shapefile part starts
@@ -299,7 +306,7 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
         
         for part in range(n_parts):
             
-            start_index = shape.parts[part]
+            start_index = shape.parts[part]-1
             end_index = shape.parts[part+1]
             
             points = shape.points[start_index:end_index] #Map coordinates
