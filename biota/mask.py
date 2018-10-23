@@ -277,7 +277,8 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
             
     # For each shape in shapefile...
     for n, shape in enumerate(shapes):
-                
+        
+        import pdb; pdb.set_trace()
         # Get shape bounding box
         sxmin, symin, sxmax, symax = shape.bbox
         
@@ -312,19 +313,22 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
 
                 # Then convert map to pixel coordinates using geo transform
                 pixels.append(_world2Pixel(tile.geo_t, lon, lat, buffer_size = buffer_size_degrees))
-
+            
             # Draw the mask for this shape...
             # if a point...
-            if shape.shapeType == 0:
+            if shape.shapeType == 0 or shape.shapeType == 1 or shape.shapeType == 11:
                 rasterize.point(pixels, n+1)
 
             # a line...
-            elif shape.shapeType == 3:
+            elif shape.shapeType == 3 or shape.shapeType == 13:
                 rasterize.line(pixels, n+1)
   
             # or a polygon.
-            elif shape.shapeType == 5:  
+            elif shape.shapeType == 5 or shape.shapeType == 15:  
                 rasterize.polygon(pixels, n+1)
+            
+            else:
+                print 'Shapefile type %s not recognised!'%(str(shape.shapeType))
         
     #Converts a Python Imaging Library array to a gdalnumeric image.
     mask = gdalnumeric.fromstring(rasterPoly.tobytes(),dtype=np.uint32)
