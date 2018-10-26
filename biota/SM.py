@@ -85,7 +85,7 @@ def _interpolateTime(sm):
             
     return sm_interp
 
-def _resampleSM(sm_interp, tile, geo_t):
+def _resampleSM(sm_interp, tile, geo_t, interpolation = 'avearge'):
     '''
     '''
         
@@ -101,16 +101,22 @@ def _resampleSM(sm_interp, tile, geo_t):
     ds_dest.SetGeoTransform(tile.geo_t)
     ds_dest.SetProjection(tile.proj)
     
-    # Reproject input GeoTiff to match the ALOS tile
-    gdal.ReprojectImage(ds_source, ds_dest, tile.proj, tile.proj, gdal.GRA_NearestNeighbour)
+    # Select interpolation type
+    if interpolation == 'average' or interpolation == 'nearest':
+        interp_type = gdal.GRA_NearestNeighbour
+    elif interpolation == 'cubic':
+        interp_type = gdal.GRA_CubicSpline
     
+    # Reproject input GeoTiff to match the ALOS tile    
+    gdal.ReprojectImage(ds_source, ds_dest, tile.proj, tile.proj, interp_type)
+        
     # Load resampled image into memory
     sm_resampled = ds_dest.GetRasterBand(1).ReadAsArray()
     
     return np.ma.array(sm_resampled, mask = sm_resampled == -9999.)
 
 
-def _loadSM(tile, date, search_days = 7):
+def _loadSM(tile, date, search_days = 7, interpolation = 'average'):
     '''
     Load and reproject soil moisture data
     '''
@@ -122,12 +128,12 @@ def _loadSM(tile, date, search_days = 7):
     sm_interp = _interpolateTime(sm)
     
     # Reproject to match ALOS tile (nearest neighbor)
-    sm_resampled = _resampleSM(sm_interp, tile, geo_t)
+    sm_resampled = _resampleSM(sm_interp, tile, geo_t, interpolation = interpolation)
     
     return sm_resampled
 
             
-def getSM(tile, search_days = 7):
+def getSM(tile, search_days = 7, interpolation = 'average'):
     """
     Function to load a resampled soil moisture image from the ESA CCI soil moisture product. The function returns a masked array with estimated volumetric soil moisture content (m^2/m^2), averaged for each satellite overpass in a tile.
     
@@ -137,7 +143,9 @@ def getSM(tile, search_days = 7):
     Returns:
         A masked array of estimated soil moisture (m^2/m^2)
     """
-        
+    
+    assert interpolation in ['average', 'nearest', 'cubic'], "Soil moisture interpolation type must be 'average', 'nearest', or 'cubic'."
+    
     # Build an array of dates in string format, which is quicker to search
     dates = tile.getDate().astype(np.int)
     
@@ -151,12 +159,17 @@ def getSM(tile, search_days = 7):
             continue
         
         # Interpolate through time and draw out the central value, and zoom to scale of tile
-        sm_resampled = _loadSM(tile, dt.datetime(1970,1,1).date() + dt.timedelta(date), search_days = search_days)
+        sm_resampled = _loadSM(tile, dt.datetime(1970,1,1).date() + dt.timedelta(date), search_days = search_days, interpolation = interpolation)
         
         # Only output soil moisture where > 25 % data exists        
         if float((sm_resampled.mask[dates == date]).sum()) / (sm_resampled.mask[dates == date]).shape[0] <= 0.25:
-            out[dates == date] = np.ma.mean(sm_resampled[dates == date])        
-    
+            
+            if interpolation == 'average':
+                # Calculate the mean average of values in overpass
+                out[dates == date] = np.ma.mean(sm_resampled[dates == date])
+            elif interpolation == 'nearest' or interpolation == 'cubic':
+                out[dates == date] = sm_resampled[dates == date]
+                
     # Add the mask
     out = np.ma.array(out, mask = np.logical_or(tile.mask, out == 999999.))
         

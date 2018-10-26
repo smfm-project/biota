@@ -38,7 +38,7 @@ class LoadTile(object):
         mask:
     """
         
-    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, window_size = 5, sm_dir = os.getcwd(), output_dir = os.getcwd()):
+    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, window_size = 5, sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -56,6 +56,7 @@ class LoadTile(object):
         assert window_size % 2 == 1, "Option window_size must be an odd integer."
         assert os.path.isdir(os.path.expanduser(data_dir)), "Specified data directory (%s) does not exist"%str(data_dir)
         assert os.path.isdir(os.path.expanduser(sm_dir)), "Specified soil moisture directory (%s) does not exist"%str(sm_dir)
+        assert sm_interpolation in ['nearest', 'average', 'cubic'], "Soil moisture interpolation type must be one of 'nearest', 'average' or 'cubic'."
         assert os.path.isdir(os.path.expanduser(output_dir)), "Specified output directory (%s) does not exist"%str(output_dir)
         assert type(forest_threshold) == float or type(forest_threshold) == int, "Forest threshold must be numeric."
         assert type(area_threshold) == float or type(area_threshold) == int, "Area threshold must be numeric."
@@ -86,6 +87,7 @@ class LoadTile(object):
         
         # Set up soil moisture data location
         self.SM_dir = os.path.expanduser(sm_dir.rstrip('/'))
+        self.SM_interpolation = sm_interpolation
         
         # Set up locations for file output
         self.output_pattern = self.__getOutputPattern()
@@ -531,7 +533,28 @@ class LoadTile(object):
         
         return self.DOY       
     
-    def getSM(self, output = False, show = False):
+    def getYearArray(self, output = False, show = False):
+        """
+        Loads year of overpass into a numpy array
+        """
+        
+        # Don't rerun processing if already present in memory
+        if not hasattr(self, 'YearArray'):
+            
+            dates = self.getDate()       
+            
+            YearArray = dates.astype('datetime64[Y]').astype(int) + 1970
+                        
+            # Save output to class
+            self.YearArray = YearArray
+            
+        if output: self.__outputGeoTiff(self.YearArray, 'YearArray', dtype = gdal.GDT_Int32)
+        
+        if show: self.__showArray(self.YearArray, title = 'YearArray', cbartitle = 'Year', vmin = self.year-1, vmax = self.year+1, cmap = 'Spectral')
+        
+        return self.YearArray
+    
+    def getSM(self, output = False, show = False, search_days = 7):
         """
         Loads a soil moisture map using the ESA CCI soil moisture product.
         """
@@ -539,7 +562,7 @@ class LoadTile(object):
         # Don't rerun processing if already present in memory
         if not hasattr(self, 'SM'):
             
-            SM = biota.SM.getSM(self)
+            SM = biota.SM.getSM(self, search_days = search_days, interpolation = self.SM_interpolation)
             
             # Keep masked values tidy
             SM.data[self.mask] = self.nodata

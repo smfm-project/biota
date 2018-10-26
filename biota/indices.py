@@ -388,7 +388,7 @@ def calculateProportionalChange(tile_change, change_type, patch_size = 'auto', o
             
             # Calculate proportion of patch subject to change_type
             change_downsampled.data[n, m] = int(round((float(C.sum()) / ((patch_size ** 2) - C.mask.sum())) * 100))
-
+            
         else:
             change_downsampled.mask[n, m] = True
 
