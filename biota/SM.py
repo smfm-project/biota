@@ -9,53 +9,99 @@ import scipy.interpolate
 import biota
 
 import pdb
+
+
+def _findFiles(tile, date, search_days = 7, data_source = "CCI"):
+    """
+    """
     
+    assert data_source == "CCI" or data_source == "SMAP", "Soil moisture data_source must be CCI or SMAP."
+    
+    if data_source == "CCI":
+        data_files = np.array(sorted(glob.glob(tile.SM_dir + '/*.nc')))
+    elif data_source == "SMAP":
+        data_files = np.array(sorted(glob.glob(tile.SM_dir + '/*.h5')))
+    
+    assert len(data_files) > 0, "No data found in soil moisture data path (%s)."%data_files
+    
+    # Grab their dates
+    if data_source == "CCI":
+        data_dates = np.array([dt.datetime.strptime(data_file.split('/')[-1].split('-')[-2][:8], '%Y%m%d').date() for data_file in data_files])
+    
+    elif data_source == "SMAP":
+        data_dates = np.array([dt.datetime.strptime(data_file.split('/')[-1].split('_')[-3], '%Y%m%d').date() for data_file in data_files]) 
+    
+     
+    sel = np.logical_and(data_dates >= date - dt.timedelta(search_days), data_dates <= date + dt.timedelta(search_days))
 
+    assert len(data_files[sel]) > 0, "No data for tile date found in soil moisture data path (%s)."%tile.SM_dir
+    
+    return data_files[sel]
 
-def _readTimeStack(tile, date, search_days = 7):
+def _readSM(sm_file, data_source = "CCI"):
+    """
+    """
+    
+    assert data_source == "CCI" or data_source == "SMAP", "Soil moisture data_source must be CCI or SMAP."
+        
+    if data_source == "CCI":
+        
+        # Load dataset
+        ds = gdal.Open('NETCDF:%s:sm'%sm_file)
+        
+        # Get GeoTransform()
+        geo_t = ds.GetGeoTransform()
+    
+    else:
+        
+        # Load dataset
+        ds = gdal.Open('HDF5:"%s"://Soil_Moisture_Retrieval_Data_AM/soil_moisture'%sm_file)
+        
+        # Build geo_t equivalent
+        latitudes = gdal.Open('HDF5:"%s"://Soil_Moisture_Retrieval_Data_AM/latitude'%sm_file).ReadAsArray()
+        longitudes = gdal.Open('HDF5:"%s"://Soil_Moisture_Retrieval_Data_AM/longitude'%sm_file).ReadAsArray()
+        
+        # Get GeoTransform()
+        geo_t = (-180, 360./3856, 0.0, 84.65642 + ((360./3856)/2.), 0.0, -(360./3856))
+        
+    return ds, geo_t
+        
+
+def _readTimeStack(tile, date, search_days = 7, data_source = "CCI"):
     '''
     Load soil moisture time stack
     '''
     
     # Load list of netCDF files
-    nc_files = np.array(sorted(glob.glob(tile.SM_dir + '/*.nc')))
-    
-    assert len(nc_files) > 0, "No data found in soil moisture data path (%s)."%nc_files
-    
-    # Grab their dates
-    nc_dates = np.array([dt.datetime.strptime(nc_file.split('/')[-1].split('-')[-2][:8], '%Y%m%d').date() for nc_file in nc_files])
+    sm_files = _findFiles(tile, date, search_days = search_days, data_source = data_source)
 
-    sel = np.logical_and(nc_dates >= date - dt.timedelta(search_days), nc_dates <= date + dt.timedelta(search_days))
-
-    assert len(nc_files[sel]) > 0, "No data for tile date found in soil moisture data path (%s)."%nc_files
-
-    for n, nc_file in enumerate(nc_files[sel]):
-            
-        # Load dataset
-        ds = gdal.Open('NETCDF:%s:sm'%nc_file)
+    for n, sm_file in enumerate(sm_files):
         
-        # Get GeoTransform()
-        geo_t = ds.GetGeoTransform()
+        ds, geo_t = _readSM(sm_file, data_source = data_source)
         
-        # Get netCDF extent
+        # Get file extent
         ulLon, ulLat = geo_t[0], geo_t[3]
         lonDist, latDist = geo_t[1], geo_t[5]
         
         # Get UL coord for tile
         xOffset = int(math.floor((tile.lon - ulLon) / lonDist))
-        yOffset = int(math.ceil((ulLat - tile.lat) / latDist)) * -1
+        yOffset = int(math.floor((ulLat - tile.lat) / latDist * -1)) 
         
-        # And the extent of pixels to load
-        yCount = int(abs(math.floor(1. / latDist)))
-        xCount = int(math.ceil(1. / lonDist))
-        
+        # And the extent of pixels to load. Add one in case of un-aligned pixels
+        yCount = int(abs(math.floor(1. / latDist))+1)
+        xCount = int(math.ceil(1. / lonDist)+1)
+                
         this_sm = ds.ReadAsArray(xOffset, yOffset, xCount, yCount)
         
         if 'sm_out' not in locals():
             sm_out = np.ma.zeros((this_sm.shape[0], this_sm.shape[1], (search_days * 2) + 1), dtype = np.float32)
         
+        # Both datasets have -9999. as a nodata value
         sm_out[:,:,n] = np.ma.array(this_sm, mask = this_sm == -9999.)
-            
+        
+        # Close dataset
+        ds = None
+        
     geo_t_out = (ulLon + (xOffset * lonDist), geo_t[1], geo_t[2], ulLat + (yOffset * latDist), geo_t[4], geo_t[5])
     
     return sm_out, geo_t_out
@@ -88,7 +134,7 @@ def _interpolateTime(sm):
 def _resampleSM(sm_interp, tile, geo_t, interpolation = 'avearge'):
     '''
     '''
-        
+    
     # Create output file matching ALOS tile
     gdal_driver = gdal.GetDriverByName('MEM')
     
@@ -116,13 +162,13 @@ def _resampleSM(sm_interp, tile, geo_t, interpolation = 'avearge'):
     return np.ma.array(sm_resampled, mask = sm_resampled == -9999.)
 
 
-def _loadSM(tile, date, search_days = 7, interpolation = 'average'):
+def _loadSM(tile, date, search_days = 7, interpolation = 'average', data_source = "CCI"):
     '''
     Load and reproject soil moisture data
     '''
     
     # Load SM time stack (within 1 week of measurement)
-    sm, geo_t = _readTimeStack(tile, date, search_days = search_days)
+    sm, geo_t = _readTimeStack(tile, date, search_days = search_days, data_source = data_source)
     
     # Interpolate over time gaps
     sm_interp = _interpolateTime(sm)
@@ -158,8 +204,16 @@ def getSM(tile, search_days = 7, interpolation = 'average'):
         if date == 0:
             continue
         
+        # Determine source data type
+        if len(glob.glob(tile.SM_dir + "/ESACCI-SOILMOISTURE-*.nc")) > 0:
+            data_source = "CCI"
+        elif len(glob.glob(tile.SM_dir + "/SMAP_L3*.h5")) > 0:
+            data_source = "SMAP"
+        else:
+            assert False, "No data from CCI or SMAP soil moisture products found in sm_dir (%s)"%tile.SM_dir
+        
         # Interpolate through time and draw out the central value, and zoom to scale of tile
-        sm_resampled = _loadSM(tile, dt.datetime(1970,1,1).date() + dt.timedelta(date), search_days = search_days, interpolation = interpolation)
+        sm_resampled = _loadSM(tile, dt.datetime(1970,1,1).date() + dt.timedelta(date), search_days = search_days, interpolation = interpolation, data_source = data_source)
         
         # Only output soil moisture where > 25 % data exists        
         if float((sm_resampled.mask[dates == date]).sum()) / (sm_resampled.mask[dates == date]).shape[0] <= 0.25:
