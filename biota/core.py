@@ -38,7 +38,7 @@ class LoadTile(object):
         mask:
     """
         
-    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, window_size = 5, sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
+    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, window_size = 5, contiguity = 'queen', sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -54,6 +54,7 @@ class LoadTile(object):
         assert type(lee_filter) == bool, "Option lee_filter must be set to 'True' or 'False'."
         assert type(window_size) == int, "Option window_size must be an integer."
         assert window_size % 2 == 1, "Option window_size must be an odd integer."
+        assert contiguity in ['rook', 'queen'], "Contiguity constraint must be 'rook' or 'queen'."
         assert os.path.isdir(os.path.expanduser(data_dir)), "Specified data directory (%s) does not exist"%str(data_dir)
         assert os.path.isdir(os.path.expanduser(sm_dir)), "Specified soil moisture directory (%s) does not exist"%str(sm_dir)
         assert sm_interpolation in ['nearest', 'average', 'cubic'], "Soil moisture interpolation type must be one of 'nearest', 'average' or 'cubic'."
@@ -67,6 +68,7 @@ class LoadTile(object):
         self.downsample_factor = downsample_factor
         self.lee_filter = lee_filter
         self.window_size = window_size
+        self.contiguity = contiguity
         self.forest_threshold = forest_threshold
         self.area_threshold = area_threshold
         
@@ -662,7 +664,7 @@ class LoadTile(object):
                 min_pixels = int(round(self.area_threshold / (self.yRes * self.xRes * 0.0001)))
                 
                 # Remove pixels that aren't part of a forest block of size at least min_pixels
-                contiguous_area, _ = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
+                contiguous_area, _ = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels, contiguity = self.contiguity)
                 
                 WoodyCover.data[contiguous_area == False] = False
                         
@@ -698,7 +700,7 @@ class LoadTile(object):
             min_pixels = int(round(self.area_threshold / (self.yRes * self.xRes * 0.0001)))
             
             # Get areas that meet that threshold
-            _, ForestPatches = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels)
+            _, ForestPatches = biota.indices.getContiguousAreas(WoodyCover, True, min_pixels = min_pixels, contiguity = self.contiguity)
             
             # Save output to class
             self.ForestPatches = ForestPatches
@@ -740,11 +742,13 @@ class LoadChange(object):
     Input is two mosaic tiles from LoadTile, will output maps and change statistics.
     """
         
-    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, output_dir = os.getcwd(), output = False):
+    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, contiguity = 'queen', output_dir = os.getcwd(), output = False):
         '''
         Initialise
         '''
-                
+        
+        assert contiguity in ['rook', 'queen'], "Contiguity constraint must be 'rook' or 'queen'."
+        
         self.tile_t1 = tile_t1
         self.tile_t2 = tile_t2
         
@@ -770,6 +774,8 @@ class LoadChange(object):
         self.change_intensity_threshold = change_intensity_threshold
         self.change_magnitude_threshold = change_magnitude_threshold
         self.change_area_threshold = change_area_threshold
+        
+        self.contiguity = contiguity
         
         self.year_t1 = tile_t1.year
         self.year_t2 = tile_t2.year
@@ -946,8 +952,8 @@ class LoadChange(object):
                 min_pixels = int(round(self.change_area_threshold / (self.yRes * self.xRes * 0.0001)))
                 
                 # Get areas of change that meet minimum area requirement
-                CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels)
-                CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels)
+                CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
+                CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
                 CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
                 NOCHANGE = CHANGE == False
             
@@ -990,7 +996,7 @@ class LoadChange(object):
         if show:
             # Hide minor gain, minor loss and nonforest in display output
             change_code_display = np.ma.array(self.ChangeCode, mask = np.zeros_like(self.ChangeCode, dtype = np.bool))
-            change_code_display.mask[np.logical_or(np.logical_or(change_code_display == 3, change_code_display == 4), change_code_display == 0)] = True
+            change_code_display.mask[np.isin(change_code_display, [0, 3, 4, 255])] = True
             self.__showArray(change_code_display, title = 'Change type', cbartitle = 'Class', vmin = 1, vmax = 6, cmap = 'Spectral')
                 
         return self.ChangeType

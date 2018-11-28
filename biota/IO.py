@@ -54,7 +54,7 @@ def loadSize(filepath):
     return ds.RasterYSize, ds.RasterXSize
 
 
-def loadRaster(raster, tile, resampling = 0):
+def loadRaster(raster, tile, resampling = 0, dtype = 3):
     """
     Loads a raster image (e.g. GeoTiff), reprojecting to match a tile.
     
@@ -75,7 +75,7 @@ def loadRaster(raster, tile, resampling = 0):
     
     # Create output file matching ALOS tile
     gdal_driver = gdal.GetDriverByName('MEM')
-    ds_dest = gdal_driver.Create('', tile.xSize, tile.ySize, 1, 3)
+    ds_dest = gdal_driver.Create('', tile.xSize, tile.ySize, 1, dtype)
     ds_dest.SetGeoTransform(tile.geo_t)
     ds_dest.SetProjection(tile.proj)
        

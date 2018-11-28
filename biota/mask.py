@@ -11,7 +11,7 @@ import biota.IO
 import pdb
 
 
-def dilateMask(mask, buffer_px):
+def dilateMask(mask, buffer_px, location_id = False):
     """
     Dilate a boolean (True/False) numpy array by a specified number of pixels.
         
@@ -22,8 +22,14 @@ def dilateMask(mask, buffer_px):
     Returns:
         The mask array with dilated 'True' locations.
     """
-        
-    mask_dilated = ndimage.morphology.binary_dilation(mask, iterations = buffer_px)
+    
+    if location_id == False:
+        mask_dilated = ndimage.morphology.binary_dilation(mask, iterations = buffer_px)
+    
+    else:
+        mask_dilated = np.zeros_like(mask)
+        for i in np.unique(mask[mask > 0]):
+            mask_dilated[ndimage.morphology.binary_dilation(mask == i, iterations = buffer_px)] = i
     
     return mask_dilated
 
@@ -283,8 +289,8 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
             # Points don't have a bbox, calculate manually
             sxmin = np.min(np.array(shape.points)[:,0])
             sxmax = np.max(np.array(shape.points)[:,0])
-            symin = np.min(np.array(shape.points)[0,:])
-            symax = np.max(np.array(shape.points)[0,:])   
+            symin = np.min(np.array(shape.points)[:,1])
+            symax = np.max(np.array(shape.points)[:,1])
         else:
             sxmin, symin, sxmax, symax = shape.bbox
         
@@ -349,7 +355,7 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
     
     # If any buffer pixels are slected, dilate the masked area by buffer_px pixels
     if buffer_px > 0:
-        mask = dilateMask(mask, buffer_px)
+        mask = dilateMask(mask, buffer_px, location_id = location_id)
     
     # Get rid of image buffer
     mask = mask[buffer_px:mask.shape[0]-buffer_px, buffer_px:mask.shape[1]-buffer_px]
@@ -389,13 +395,19 @@ def getTilesInShapefile(shp, field = None, value = None):
         shapes = shapes[getField(shp, field) == value]
         
     for shape in shapes:
-        
         # Get the bbox for each shape in the shapefile
-        lonmin, latmin, lonmax, latmax = shape.bbox
+        if shape.shapeType == 1 or shape.shapeType == 11:
+            # Points don't have a bbox, calculate manually
+            sxmin = np.min(np.array(shape.points)[:,0])
+            sxmax = np.max(np.array(shape.points)[:,0])
+            symin = np.min(np.array(shape.points)[:,1])
+            symax = np.max(np.array(shape.points)[:,1])
+        else:
+            sxmin, symin, sxmax, symax = shape.bbox
         
         # Transform points to WGS84
-        lonmin, latmin, z = coordTransform.TransformPoint(lonmin, latmin)
-        lonmax, latmax, z = coordTransform.TransformPoint(lonmax, latmax)
+        lonmin, latmin, z = coordTransform.TransformPoint(sxmin, symin)
+        lonmax, latmax, z = coordTransform.TransformPoint(sxmax, symax)
         
         # Get the tiles that cover the area of the shapefile
         latrange = range(int(math.ceil(latmin)), int(math.ceil(latmax)+1), 1)

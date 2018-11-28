@@ -3,40 +3,45 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as ndimage
+from scipy.ndimage.measurements import label
 
 import pdb
 
 import biota.IO
 
-def getContiguousAreas(data, value, min_pixels = 1):
+def getContiguousAreas(data, value, min_pixels = 1, contiguity = 'queen'):
     '''
     Get pixels that come from the same contigous area.
     
     Args:
         data: A numpy array
         value: Pixel value to include in contiguous_area (e.g. True for forest)
-        min_area: What minimum area should be included (number of pixels, queens move)
+        min_area: What minimum area should be included (number of pixels)
+        contuguity: Set to rook (4-way) or queen (8-way) connectivity constraint. Defaults to 'queen'.
     
     Returns:
         A binary array of pixels that meet the conditions
     '''
     
-    from scipy.ndimage.measurements import label
-    
-    # If masked, we use this flag to save the mask for later.   
-    masked = np.ma.isMaskedArray(data)
-    
-    # If any pixels are masked, we give them the value of the nearest valid pixel.
-    if masked:
-        mask = np.ma.getmaskarray(data)
-        ind = ndimage.distance_transform_edt(mask, return_distances = False, return_indices = True)
-        data = data.data[tuple(ind)]
+    assert contiguity in ['rook', 'queen'], "Contiguity must be either 'rook' or 'queen'. Input recieved was <%s>."%str(contiguity)
     
     # Extract area that meets condition
     binary_array = (data == value) * 1
+
+    # If masked, we use this flag to save the mask for later.   
+    masked = np.ma.isMaskedArray(binary_array)
+    
+    # Set masked areas to non-contiguous value
+    if masked:
+        mask = np.ma.getmaskarray(binary_array)
+        binary_array = binary_array.filled(0)
     
     # Label contigous areas with a number
-    structure = ndimage.generate_binary_structure(2,2) # This connects diagonal elements
+    if contiguity == 'rook':
+        structure = ndimage.generate_binary_structure(2,1) # 4-way connectivity
+    elif contiguity == 'queen':
+        structure = ndimage.generate_binary_structure(2,2) # 8-way connectivity
+    
     location_id, n_areas = label(binary_array, structure = structure)
     
     # Get count of each value in array
@@ -218,8 +223,8 @@ def calculateLDI(tile, patch_size = 'auto', output = False, show = False):
         this_patch = woody_cover[ymin:ymax, xmin:xmax]
             
         # Get connected patches of forest and nonforest
-        _, forest_id = getContiguousAreas(this_patch, True)
-        _, nonforest_id = getContiguousAreas(this_patch, False)
+        _, forest_id = getContiguousAreas(this_patch, True, contiguity = tile.contiguity)
+        _, nonforest_id = getContiguousAreas(this_patch, False, contiguity = tile.contiguity)
         
         # Supply a unique ID to each habitat patch, whether forest or nonforest.
         unique_ids = forest_id.copy()

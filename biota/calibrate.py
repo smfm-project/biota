@@ -3,6 +3,8 @@
 
 # This is a set of scripts for calibration of a biomass-backscatter curve
 
+import argparse
+import csv
 import numpy as np
 import scipy.stats
 
@@ -13,7 +15,7 @@ import pdb
 
 
 
-def extractGamma0(shp, plot_field, agb_field, tile_example, verbose = False, units = 'natural'):
+def extractGamma0(dataloc, shp, plot_field, agb_field, buffer_size = 0, verbose = False, units = 'natural'):
     '''
     Extract gamma0 from ALOS tiles.
     
@@ -21,21 +23,24 @@ def extractGamma0(shp, plot_field, agb_field, tile_example, verbose = False, uni
         shp: A shapefile containing plot data
         plot_field: The shapefile field containing plot names
         agb_field: The shapefile field containing AGB estimates
-        tile_example: An exemplar ALOS tile (from LoadTile()) which contains information on the processing chain.
-        #TODO: year?
     Returns:
         A dictionary containing plot names, AGB and gamma0 values
     '''
     
     # Use example data to get processing steps
-    downsample_factor = tile_example.downsample_factor
-    lee_filter = tile_example.lee_filter
-    year = tile_example.year
-    dataloc = tile_example.dataloc
-    
+    #downsample_factor = tile_example.downsample_factor
+    #lee_filter = tile_example.lee_filter
+    #year = tile_example.year
+    #dataloc = tile_example.dataloc
+    downsample_factor = 1
+    year = 2016
+    lee_filter = False
+        
     # Extract relevant info from shapefile
-    plot_names = biota.mask.getField(shp, plot_field) 
-    agb = biota.mask.getField(shp, agb_field).astype(np.float)
+    plot_names = biota.mask.getField(shp, plot_field)
+    
+    if agb_field is not None:
+        agb = biota.mask.getField(shp, agb_field).astype(np.float)
     
     # Identify tiles that contain gamma0 data for the shapefile
     tiles = biota.mask.getTilesInShapefile(shp)
@@ -44,11 +49,13 @@ def extractGamma0(shp, plot_field, agb_field, tile_example, verbose = False, uni
     # TODO
     
     # Generate output array for backscatter
-    gamma0_hv = np.empty_like(agb, dtype = np.float32)
-    gamma0_hv[:] = np.nan
+    gamma0_mean_hv = np.empty_like(plot_names, dtype = np.float32)
+    gamma0_mean_hv[:] = np.nan
     
-    gamma0_hh = gamma0_hv.copy()
-    doy = gamma0_hv.copy()
+    gamma0_mean_hh = gamma0_mean_hv.copy()
+    gamma0_std_hv = gamma0_mean_hv.copy()
+    gamma0_std_hh = gamma0_mean_hv.copy()
+    doy = gamma0_mean_hv.copy()
     
     # For each tile covered by shapefile
     for lat, lon in tiles:
@@ -56,7 +63,10 @@ def extractGamma0(shp, plot_field, agb_field, tile_example, verbose = False, uni
         if verbose: print 'Doing lat: %s, lon: %s'%(str(lat), str(lon))
         
         # Load tile
-        tile = biota.LoadTile(dataloc, lat, lon, year, downsample_factor = downsample_factor, lee_filter = lee_filter)
+        try:
+            tile = biota.LoadTile(dataloc, lat, lon, year, downsample_factor = downsample_factor, lee_filter = lee_filter)
+        except:
+            continue
         
         # Get backscatter (both polarisations) and DOY
         data_gamma0_hv = tile.getGamma0(polarisation = 'HV', units = units)
@@ -64,7 +74,7 @@ def extractGamma0(shp, plot_field, agb_field, tile_example, verbose = False, uni
         data_doy = tile.getDOY()
         
         # Mask out each plot
-        plot_mask = biota.mask.rasterizeShapefile(tile, shp, location_id = True, buffer_size = 0.)
+        plot_mask = biota.mask.maskShapefile(tile, shp, location_id = True, buffer_size = buffer_size)
         
         # Extract values for each plot
         for n in np.unique(plot_mask[plot_mask != 0]):
@@ -72,19 +82,35 @@ def extractGamma0(shp, plot_field, agb_field, tile_example, verbose = False, uni
             # Get mask for plot and tile
             this_mask = np.logical_and(plot_mask == n, tile.mask == False)
             
+            if this_mask.sum() == 0: continue
+            
             # Add metrics to output array
-            gamma0_hv[n-1] = np.mean(data_gamma0_hv[this_mask])
-            gamma0_hh[n-1] = np.mean(data_gamma0_hh[this_mask])
-            doy[n-1] = np.median(data_doy[this_mask])
-    
+            gamma0_mean_hv[n-1] = np.nanmean(data_gamma0_hv[this_mask])
+            gamma0_mean_hh[n-1] = np.nanmean(data_gamma0_hh[this_mask])
+            gamma0_std_hv[n-1] = np.nanstd(data_gamma0_hv[this_mask])
+            gamma0_std_hh[n-1] = np.nanstd(data_gamma0_hh[this_mask])
+            doy[n-1] = np.nanmedian(data_doy[this_mask])
+            
+            if np.isnan(np.nanmean(data_gamma0_hv[this_mask])): pdb.set_trace()
+            
     # Return data as a dictionary
     data_dict = {}
-    data_dict['plot_name'] = plot_names
-    data_dict['AGB'] = agb
-    data_dict['gamma0_HH'] = gamma0_hh
-    data_dict['gamma0_HV'] = gamma0_hv
-    data_dict['DOY'] = doy
-        
+    data_dict['plot_name'] = plot_names.tolist()
+    data_dict['gamma0_mean_HH'] = gamma0_mean_hh.tolist()
+    data_dict['gamma0_mean_HV'] = gamma0_mean_hv.tolist()
+    data_dict['gamma0_std_HH'] = gamma0_std_hh.tolist()
+    data_dict['gamma0_std_HV'] = gamma0_std_hv.tolist()
+    data_dict['DOY'] = doy.tolist()
+    
+    if agb_field is not None:
+        data_dict['plot_AGB'] = agb.tolist()
+    
+    with open('gamma0_by_plot.csv', 'wb') as f:  # Just use 'w' mode in 3.x
+        writer = csv.writer(f, delimiter = ',')
+        writer.writerow(data_dict.keys())
+        for row in range(len(plot_names)):
+            writer.writerow([data_dict[k][row] for k in data_dict.keys()])
+    
     return data_dict
 
 
@@ -99,7 +125,7 @@ def fitLinearModel(data_dict):
     '''
     
     # Select only data that have values. NaN can arise in cases of masked areas in ALOS tiles
-    sel = np.logical_and(np.isfinite(data_dict['gamma0_HV']), np.isfinite(data_dict['AGB']))
+    sel = np.logical_and(np.isfinite(data_dict['gamma0_HV']), np.isfinite(data_dict['plot_AGB']))
     
     assert sel.sum() > 0, "No usable data in data_dict."
     
@@ -109,3 +135,37 @@ def fitLinearModel(data_dict):
     print "p value:", p_value
     
     return slope, intercept
+
+
+def main(dataloc, shp, plot_field, agb_field):
+    '''
+    '''
+    
+    data_dict = extractGamma0(dataloc, shp, plot_field, agb_field, buffer_size = 25., verbose = True)
+    
+    if agb_field is not None:
+        slope, intercept = fitLinearModel(data_dict)
+    
+
+if __name__ == '__main__':
+
+    # Set up command line parser
+    parser = argparse.ArgumentParser(description = 'Calibrate a biomass-backscatter relationship with ALOS mosaic data and a shapefile.')
+    
+    parser._action_groups.pop()
+    required = parser.add_argument_group('Required arguments')
+    optional = parser.add_argument_group('Optional arguments')
+    
+    # Required arguments
+    required.add_argument('-p', '--plot_field', metavar = 'NAME', type = str, help = 'Shapefile field containing a unique plot ID.')
+    required.add_argument('-d', '--dataloc', metavar = 'DIR', type = str, help = 'Directory containing ALOS mosaic tiles')
+    required.add_argument('shapefile', metavar = 'SHP', type = str, nargs = 1, help = "A shapefile containing plot and AGB data.")
+    
+    # Optional arguments
+    optional.add_argument('-a', '--agb_field', metavar = 'NAME', type = str, default = None, help = 'Shapefile field containing an estimate of AGB.')
+    
+    # Get arguments from command line
+    args = parser.parse_args()
+    
+    main(args.dataloc, args.shapefile[0], args.plot_field, args.agb_field)
+    
