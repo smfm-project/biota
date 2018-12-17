@@ -63,7 +63,7 @@ def extractGamma0(dataloc, year, shp, plot_field, agb_field, buffer_size = 0, ve
     
     # For each tile covered by shapefile
     for lat, lon in tiles:
-        
+                
         if verbose: print 'Doing lat: %s, lon: %s'%(str(lat), str(lon))
         
         # Load tile

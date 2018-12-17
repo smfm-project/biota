@@ -83,8 +83,8 @@ def _world2Pixel(geo_t, x, y, buffer_size = 0):
     xDist = geo_t[1]
     yDist = geo_t[5]
     
-    pixel = int((x - ulX) / xDist)
-    line = int((y - ulY) / yDist)
+    pixel = (x - ulX) / xDist
+    line = (y - ulY) / yDist
     
     return (pixel, line)
 
@@ -332,12 +332,12 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
 
                 # Then convert map to pixel coordinates using geo transform
                 pixels.append(_world2Pixel(tile.geo_t, lon, lat, buffer_size = buffer_size_degrees))
-            
+                        
             # Draw the mask for this shape...
             # if a point...
             if shape.shapeType == 0 or shape.shapeType == 1 or shape.shapeType == 11:
                 rasterize.point(pixels, n+1)
-
+                
             # a line...
             elif shape.shapeType == 3 or shape.shapeType == 13:
                 rasterize.line(pixels, n+1)
@@ -345,14 +345,14 @@ def maskShapefile(tile, shp, buffer_size = 0., field = None, value = None, locat
             # or a polygon.
             elif shape.shapeType == 5 or shape.shapeType == 15:  
                 rasterize.polygon(pixels, n+1)
-            
+                
             else:
                 print 'Shapefile type %s not recognised!'%(str(shape.shapeType))
         
     #Converts a Python Imaging Library array to a gdalnumeric image.
     mask = gdalnumeric.fromstring(rasterPoly.tobytes(),dtype=np.uint32)
     mask.shape = rasterPoly.im.size[1], rasterPoly.im.size[0]
-    
+        
     # If any buffer pixels are slected, dilate the masked area by buffer_px pixels
     if buffer_px > 0:
         mask = dilateMask(mask, buffer_px, location_id = location_id)
