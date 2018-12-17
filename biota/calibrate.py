@@ -15,12 +15,13 @@ import pdb
 
 
 
-def extractGamma0(dataloc, shp, plot_field, agb_field, buffer_size = 0, verbose = False, units = 'natural'):
+def extractGamma0(dataloc, year, shp, plot_field, agb_field, buffer_size = 0, verbose = False, units = 'natural'):
     '''
     Extract gamma0 from ALOS tiles.
     
     Args:
         shp: A shapefile containing plot data
+        year: Year to load
         plot_field: The shapefile field containing plot names
         agb_field: The shapefile field containing AGB estimates
     Returns:
@@ -32,9 +33,12 @@ def extractGamma0(dataloc, shp, plot_field, agb_field, buffer_size = 0, verbose 
     #lee_filter = tile_example.lee_filter
     #year = tile_example.year
     #dataloc = tile_example.dataloc
+    
+    assert (year >= 2007 and year <= 2010) or year >= 2015, "Invalid year (%s) input"%str(year)
+    
     downsample_factor = 1
-    year = 2016
-    lee_filter = False
+    lee_filter = True
+    window_size = 3
         
     # Extract relevant info from shapefile
     plot_names = biota.mask.getField(shp, plot_field)
@@ -64,7 +68,7 @@ def extractGamma0(dataloc, shp, plot_field, agb_field, buffer_size = 0, verbose 
         
         # Load tile
         try:
-            tile = biota.LoadTile(dataloc, lat, lon, year, downsample_factor = downsample_factor, lee_filter = lee_filter)
+            tile = biota.LoadTile(dataloc, lat, lon, year, downsample_factor = downsample_factor, lee_filter = lee_filter, window_size = window_size)
         except:
             continue
         
@@ -105,7 +109,7 @@ def extractGamma0(dataloc, shp, plot_field, agb_field, buffer_size = 0, verbose 
     if agb_field is not None:
         data_dict['plot_AGB'] = agb.tolist()
     
-    with open('gamma0_by_plot.csv', 'wb') as f:  # Just use 'w' mode in 3.x
+    with open('gamma0_%s_by_plot.csv'%str(year), 'wb') as f:  # Just use 'w' mode in 3.x
         writer = csv.writer(f, delimiter = ',')
         writer.writerow(data_dict.keys())
         for row in range(len(plot_names)):
@@ -137,11 +141,11 @@ def fitLinearModel(data_dict):
     return slope, intercept
 
 
-def main(dataloc, shp, plot_field, agb_field):
+def main(dataloc, year, shp, plot_field, agb_field):
     '''
     '''
     
-    data_dict = extractGamma0(dataloc, shp, plot_field, agb_field, buffer_size = 25., verbose = True)
+    data_dict = extractGamma0(dataloc, year, shp, plot_field, agb_field, buffer_size = 25., verbose = True)
     
     if agb_field is not None:
         slope, intercept = fitLinearModel(data_dict)
@@ -157,6 +161,7 @@ if __name__ == '__main__':
     optional = parser.add_argument_group('Optional arguments')
     
     # Required arguments
+    required.add_argument('-y', '--year', metavar = 'YEAR', type = int, help = 'Year of ALOS mosaic to load.')
     required.add_argument('-p', '--plot_field', metavar = 'NAME', type = str, help = 'Shapefile field containing a unique plot ID.')
     required.add_argument('-d', '--dataloc', metavar = 'DIR', type = str, help = 'Directory containing ALOS mosaic tiles')
     required.add_argument('shapefile', metavar = 'SHP', type = str, nargs = 1, help = "A shapefile containing plot and AGB data.")
@@ -167,5 +172,5 @@ if __name__ == '__main__':
     # Get arguments from command line
     args = parser.parse_args()
     
-    main(args.dataloc, args.shapefile[0], args.plot_field, args.agb_field)
+    main(args.dataloc, args.year, args.shapefile[0], args.plot_field, args.agb_field)
     

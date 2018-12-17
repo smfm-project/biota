@@ -6,18 +6,53 @@ import ftplib
 import math
 import os
 import subprocess
+import sys
 import tarfile
+import tqdm
 
 import pdb
 
 """
-This is a simple script to assist in the downloading of data from the ALOS mosaic product.
+This is a script to assist in the downloading of data from the ALOS mosaic product.
 """
+
+
+
+def checkYears(years):
+    """
+    Reduces input years to those available for the ALOS mosaic (or may be available in future).
+    
+    Args:
+        years: A list of years
+    """
+        
+    for year in years:
+        
+        # Remove years before ALOS-1
+        if year < 2007:   
+            raise ValueError("Can't download data for year %s; no data from ALOS are available before 2007."%str(year))
+            
+        # Remove years between ALOS-1 and ALOS-2
+        elif year > 2010 and year < 2015:
+            raise ValueError("Can't download data for year %s; no data from ALOS are available 2011 to 2014 (inclusive)."%str(year))
+        
+        # Remove years from the future, which can't possibly exist yet.
+        elif year > datetime.datetime.now().year:
+            raise ValueError("Can't download data for %s; this year is in the future."%str(year))
+    
 
 
 def generateURL(lat, lon, year, large_tile = False):
     """
     Generates a URL to fetch ALOS mosaic data from JAXA FTP server.
+    
+    Args:
+        lat: Latitude
+        lon: Longitude
+        year: Year
+        large_tile: Set True to return the URL for a large (5x5 tile). Defaults to False (1x1)
+    Returns:
+        A URL
     """
     
     # Test that inputs are reasonable lats/lons
@@ -74,35 +109,71 @@ def generateURL(lat, lon, year, large_tile = False):
     return url
 
 
-def download(url, output_dir = os.getcwd()):
+def download(lat, lon, year, large_tile = False, output_dir = os.getcwd(), verbose = False):
     """
-    Download data from JAXA FTP server
+    Download data from JAXA FTP server.
+
+    Args:
+        lat: Latitude
+        lon: Longitude
+        year: Year
+        large_tile: Set True to return the URL for a large (5x5 tile). Defaults to False (1x1)
+        output_dir: Output data to a specified directory. Defaults to current working directory.
+        verbose: Set True to print progress.
+    Returns:
+        A location of the output file
     """
+    
+    if verbose: print 'Doing %stile for year: %s, lat: %s, lon: %s'%('large ' if large_tile else '', str(year), str(lat), str(lon))
+    
+    # Generate download URL
+    url = generateURL(lat, lon, year, large_tile = large_tile)
     
     # Check that output directory exists
+    output_dir = os.path.abspath(os.path.expanduser(output_dir))
     assert os.path.isdir(output_dir), "The output directory (%s) does not exist. Create it, then try again."%output_dir
+        
+    output_file = '%s/%s'%(output_dir,url.split('/')[-1])
     
     # Check that output file doesn't already exist
-    this_file = '%s/%s'%(output_dir,url.split('/')[-1])
-    
-    if os.path.exists(this_file):
-        print "WARNING: File %s already exists. Skipping."%this_file
-    elif os.path.exists(this_file[:-7]):
-        print "WARNING: File %s already exists. Skipping."%this_file[:-7]
-
-    else:
-        # Download
-        exit_status = subprocess.call(['wget', '-nc', url, '-P', output_dir])
+    if os.path.exists(output_file) or os.path.exists(output_file[:-7]):
+        raise ValueError("File %s already exists. Skipping."%output_file)
         
-        if exit_status == 8:
-            raise ValueError('Download failed: a tile for that location was not found on the FTP server.')
-        if exit_status != 0:
-            raise ValueError('Download failed with wget error code %s.'%str(exit_status))
+    # Login to FTP
+    try:
+        ftp = ftplib.FTP('ftp.eorc.jaxa.jp')
+        login = ftp.login()
+        cmd = ftp.cwd('/'.join(url.split('/')[3:-1]))        
+    except ftplib.all_errors, e:
+        errorcode_string = str(e).split(None, 1)[0]
+        raise OSError('Failed to connect to JAXA FTP serverm with error code %s.'%errorcode_string)
+        
+    # Test if file exists on remote server
+    if url.split('/')[-1] not in ftp.nlst():
+        ftp.quit()
+        raise ValueError('Download failed: a tile for that location was not found on the FTP server.')
     
-    # Determine absolute path of downloaded file
-    filepath = '%s/%s'%(output_dir.rstrip('/'), url.split('/')[-1])
+    try:
+        with open(output_file, 'wb') as f:
+            ftp.sendcmd("TYPE i")
+            total = ftp.size(url.split('/')[-1])
+            
+            with tqdm.tqdm(total = total, unit = 'B', unit_scale = True, disable = not verbose) as pbar:
+                def cb(data):
+                    pbar.update(len(data))
+                    f.write(data)
+                ftp.retrbinary('RETR %s'%url.split('/')[-1], cb)
     
-    return filepath
+    except (Exception, KeyboardInterrupt) as e:
+        #Tidy up in case of interrupted file transfer
+        os.remove(output_file)
+        ftp.close()
+        raise
+    
+    # Logout politely
+    exit = ftp.quit()
+        
+    return output_file
 
 
 def decompress(targz_file, remove = False):
@@ -112,67 +183,50 @@ def decompress(targz_file, remove = False):
     
     assert targz_file.endswith("tar.gz"), "File name must end with .tar.gz to be decompressed."
     
-    # Check that output file doesn't already exist
-    if os.path.exists(targz_file.split('/')[-1].split('.')[0]):
-        print 'WARNING: File %s already exists at output location. Not extracting.'%targz_file
+    assert os.path.exists(targz_file), "File %s not found for decompression"%targz_file
     
-    else:
-        print 'Extracting %s'%targz_file
+    # Check that output file doesn't already exist        
+    if os.path.exists(targz_file[:-7]):
+        raise ValueError('File %s already exists at output location. Not extracting.'%targz_file)
+    
+    print 'Extracting %s'%targz_file
             
-        tar = tarfile.open(targz_file, "r:gz")
-        tar.extractall(path = targz_file[:-7])
-        tar.close()
-        
-        if remove: removeTarGz(targz_file)
-
-
-def removeTarGz(targz_file):
-    """
-    Deletes ALOS-1/ALOS-2 .tar.gx files from disk.
-    Input is a compress ALOS-1/ALOS-2 file from JAXA.
-    """
+    tar = tarfile.open(targz_file, "r:gz")
+    tar.extractall(path = targz_file[:-7])
+    tar.close()
     
-    assert targz_file.endswith('_MOS.tar.gz') or targz_file.endswith('_MOS_F02DAR.tar.gz'), "removeTarGz function should only be used to delete ALOS-1/ALOS2 .tar.gz files"
-    
-    os.remove(targz_file)
+    # Remove compressed file from disk
+    if remove:
+        assert targz_file.endswith('_MOS.tar.gz') or targz_file.endswith('_MOS_F02DAR.tar.gz'), "remove function should only be used to delete ALOS-1/ALOS2 .tar.gz files"
+        os.remove(targz_file)
 
 
-def checkYears(years):
-    """
-    Reduces input years to those available for the ALOS mosaic (or may be available in future).
-    """
-    
-    years_cleansed = []
-    
-    for y in years:
-        
-        # Remove years before ALOS-1
-        if y < 2007:   
-            raise ValueError("Can't download data for year %s; no data from ALOS are available before 2007."%str(y))
-            
-        # Remove years between ALOS-1 and ALOS-2
-        elif y > 2010 and y < 2015:
-            raise ValueError("Can't download data for year %s; no data from ALOS are available 2011 to 2014 (inclusive)."%str(y))
-        
-        # Remove years from the future, which can't possibly exist yet.
-        elif y > datetime.datetime.now().year:
-            raise ValueError("Can't download data for %s; this year is in the future."%str(y))
-        
 
 
-def main(lat, lon, year, large_tile = False, output_dir = os.getcwd(), remove = False):
+def main(lat, lon, years, large_tile = False, output_dir = os.getcwd(), remove = False):
     '''
     Run through data download and preparation chain
     '''
     
-    # Generate download URL
-    url = generateURL(lat, lon, year, large_tile = large_tile)
+    # Allow single year input or list
+    if type(years) != list: years = [years]
     
-    # Get file, sending it to output_dir
-    filepath = download(url, output_dir = output_dir)
-    
-    # Decompress downloaded file, and delete original if remove == True
-    decompress(filepath, remove = remove)
+    # Cleanse input years
+    checkYears(args.years)
+        
+    for year in years:
+        
+        # Download file, provided it exists, else continue. Exit with KeyboardInterrupt.
+        try:
+            filepath = download(lat, lon, year, large_tile = large_tile, output_dir = output_dir, verbose = True)
+        except KeyboardInterrupt:
+            sys.exit(0)
+        except Exception as e:
+            print e
+            continue
+        
+        # Decompress downloaded file, and delete original if remove == True
+        decompress(filepath, remove = remove)
 
     
 
@@ -197,11 +251,9 @@ if __name__ == '__main__':
 
     # Get arguments from command line
     args = parser.parse_args()
-    
-    # Cleanse input years
-    checkYears(args.years)
-    
-    # Run through entire processing sequence
-    for year in args.years:
         
-        main(args.latitude, args.longitude, year, large_tile = args.large, output_dir = args.output_dir, remove = args.remove)
+    # Run through entire processing sequence       
+    try:
+        main(args.latitude, args.longitude, args.years, large_tile = args.large, output_dir = args.output_dir, remove = args.remove)
+    except KeyboardInterrupt:
+        sys.exit(0)
