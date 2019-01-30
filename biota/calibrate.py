@@ -141,14 +141,21 @@ def fitLinearModel(data_dict):
     return slope, intercept
 
 
-def main(dataloc, year, shp, plot_field, agb_field):
+def main(dataloc, years, shp, plot_field, agb_field):
     '''
     '''
     
-    data_dict = extractGamma0(dataloc, year, shp, plot_field, agb_field, buffer_size = 25., verbose = True)
+    # Allow processing of one or multiple year
+    if type(years) != list: years = [years]
     
-    if agb_field is not None:
-        slope, intercept = fitLinearModel(data_dict)
+    years = [int(year) for year in years]
+    
+    for year in years:
+        print 'Doing year: %s'%str(year)
+        data_dict = extractGamma0(dataloc, year, shp, plot_field, agb_field, buffer_size = 25., verbose = True)
+    
+    #if agb_field is not None:
+    #    slope, intercept = fitLinearModel(data_dict)
     
 
 if __name__ == '__main__':
@@ -161,7 +168,7 @@ if __name__ == '__main__':
     optional = parser.add_argument_group('Optional arguments')
     
     # Required arguments
-    required.add_argument('-y', '--year', metavar = 'YEAR', type = int, help = 'Year of ALOS mosaic to load.')
+    required.add_argument('-y', '--years', metavar = 'YEAR', type = str, nargs = '*', help = 'Year of ALOS mosaic to load.')
     required.add_argument('-p', '--plot_field', metavar = 'NAME', type = str, help = 'Shapefile field containing a unique plot ID.')
     required.add_argument('-d', '--dataloc', metavar = 'DIR', type = str, help = 'Directory containing ALOS mosaic tiles')
     required.add_argument('shapefile', metavar = 'SHP', type = str, nargs = 1, help = "A shapefile containing plot and AGB data.")
@@ -172,5 +179,5 @@ if __name__ == '__main__':
     # Get arguments from command line
     args = parser.parse_args()
     
-    main(args.dataloc, args.year, args.shapefile[0], args.plot_field, args.agb_field)
+    main(args.dataloc, args.years, args.shapefile[0], args.plot_field, args.agb_field)
     
