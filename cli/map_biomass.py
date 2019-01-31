@@ -41,7 +41,7 @@ if __name__ == '__main__':
     optional.add_argument('-f', '--filter', action = 'store_true', default = False, help = "Apply lee filter to input data.")
     optional.add_argument('-o', '--output_dir', type = str, metavar = 'PATH', default = os.getcwd(), help = "Specify an output directory. Defaults to the present working directory.")
     
-    # Get arguments from command line
+    # Get arguments from command line 
     args = parser.parse_args()
     
     # Run through entire processing sequence
