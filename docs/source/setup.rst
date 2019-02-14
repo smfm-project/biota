@@ -43,7 +43,7 @@ If this has functioned, on executing ``python`` in a terminal window, you should
 
 .. code-block:: console
     
-    conda install -c anaconda gdal
+    conda install -c conda-forge gdal
     conda install -c conda-forge pyshp
 
 Installing biota
