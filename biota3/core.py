@@ -588,7 +588,6 @@ class LoadTile(object):
 
         # Calibrate DN to units of dB
         gamma0 = 10 * np.ma.log10(self.getDN(polarisation = polarisation).astype(np.float) ** 2) - 83. # units = decibels
-
         # Apply filter based on dB values
         if self.lee_filter:
             gamma0 = biota3.filter.enhanced_lee_filter(gamma0, n_looks = self.nLooks, window_size = self.window_size)
