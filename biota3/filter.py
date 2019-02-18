@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import math
 import numpy as np
 import signal
 import scipy.ndimage as ndimage
@@ -33,13 +34,13 @@ def enhanced_lee_filter(img, window_size = 5, n_looks = 16):
         '''
         Based on https://stackoverflow.com/questions/18419871/improving-code-efficiency-standard-deviation-on-sliding-windows
         '''
-
+        
         from scipy import signal
-
+        
         c1 = signal.convolve2d(img, np.ones((window_size, window_size)) / (window_size ** 2), boundary = 'symm')
 
-        border = window_size/2
-
+        border = math.floor(window_size / 2)
+        
         return c1[border:-border, border:-border]
 
     # Inner function to calculate standard deviation with a moving window and a masked array
@@ -54,13 +55,15 @@ def enhanced_lee_filter(img, window_size = 5, n_looks = 16):
         c1 = signal.convolve2d(img, np.ones((window_size, window_size)) / (window_size ** 2), boundary = 'symm')
         c2 = signal.convolve2d(img*img, np.ones((window_size, window_size)) / (window_size ** 2), boundary = 'symm')
 
-        border = window_size / 2
+        border = math.floor(window_size / 2)
 
         variance = c2 - c1 * c1
         variance[variance < 0] += 0.01 # Prevents divide by zero errors.
 
         return np.sqrt(variance)[border:-border, border:-border]
-
+    
+    
+    
     # Damping factor, set to 1 which is adequate for most SAR images
     k = 1
     cu = (1./n_looks) ** 0.5
