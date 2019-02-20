@@ -53,7 +53,7 @@ def main(dir, lat, lon, year1, year2,
         print ('loading tile:', year2)
         tile2 = biota3.LoadTile(dir, lat, lon, year2, lee_filter = speckle, downsample_factor = downsample, forest_threshold = forest_threshold, area_threshold = area_threshold, output_dir = output_dir)
 
-        tile_change = biota3.LoadChange(tile1, tile2, change_area_threshold = change_area_threshold, change_magnitude_threshold = change_magnitude_threshold, change_intensity_threshold = change_intensity_threshold)
+        tile_change = biota3.LoadChange(tile1, tile2, change_area_threshold = change_area_threshold, change_magnitude_threshold = change_magnitude_threshold, change_intensity_threshold = change_intensity_threshold, output_dir = output_dir)
 
         # Here come the choices
         if output == 'AGB' or output == 'all':
