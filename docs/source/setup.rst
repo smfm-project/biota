@@ -61,6 +61,7 @@ Activate the ``biota`` environment by running this command:
     conda activate biota
 
 
+NB: Remember to activate the ``biota`` environment whenever you want to use ``biota`` or ``biota3``.
 
 
 Installing biota
@@ -72,14 +73,49 @@ To install ``biota``, enter the following in a terminal window:
 
     pip install git+https://bitbucket.org/sambowers/biota
 
-If successful, you should now be able to import ``biota`` in Python:
+
+To install ``biota3``, you will need to use the version control software ``git`` (if you don't have ``git``, follow the instructions `here <https://git-scm.com/book/en/v2/Getting-Started-Installing-Git>`_ ). You can collect the ``biota`` and ``biota3`` source code with this command:
+
+.. code-block:: console
+
+    git clone https://bitbucket.org/sambowers/biota.git
+
+
+To install ``biota3``, run the following command:
+
+.. code-block:: console
+
+    python setup3.py install
+
+
+If successful, you should now be able to import ``biota`` or ``biota3`` in Python:
 
 .. code-block:: python
 
     import biota
+    import biota3
 
 To avoid having to reference the full path of the Python scripts in biota when using command line tools, add the following line to your .bashrc file:
 
 .. code-block:: console
 
     echo "alias biota='_biota() { python ~/biota/biota/"$1".py $(shift; echo "$@") ;}; _biota'" >> ~/.bashrc
+
+
+BIOTA3: To avoid having to reference the full path of the Python scripts in biota when using command line tools, run the following command:
+
+.. code-block:: console
+
+    echo "biota3() { python /full/path/to/biota/biota3/"$1"_cmd.py $(shift; echo "$@") ; }" >> ~/.bashrc
+
+
+or add the following line to your .bashrc file:
+
+.. code-block:: console
+
+    biota3() { python /full/path/to/biota/biota3/"$1"_cmd.py $(shift; echo "$@") ; }
+
+
+This creates a function that enables you to call biota3 just by typing ``biota3`` in your terminal. To run this function, restart your terminal or run ``bash`` (you will only need to do this once). You will then need to activate the ``biota`` environment once again.
+
+You are now ready to start using biota!
