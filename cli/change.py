@@ -73,8 +73,8 @@ if __name__ == '__main__':
     required.add_argument('-dir', '--data_directory', metavar = 'DIR', type = str, help = "Path to directory containing ALOS mosaic data.")
     required.add_argument('-lat', '--latitude', metavar = 'DEG', type = int, help = "Latitude of tile to process (upper-left corner).")
     required.add_argument('-lon', '--longitude', metavar = 'DEG', type = int, help = "Longitude of tile to process (upper-left corner).")
-    required.add_argument('-y1', '--year1', metavar = 'Y', type = int, nargs = 1, help = "First year of data to process.")
-    required.add_argument('-y2', '--year2', metavar = 'Y', type = int, nargs = 1, help = "Second year of data to process.")
+    required.add_argument('-y1', '--year1', metavar = 'YR', type = int, help = "First year of data to process.")
+    required.add_argument('-y2', '--year2', metavar = 'YR', type = int, help = "Second year of data to process.")
     
     # Optional arguments
     optional.add_argument('-o', '--output', choices = ['AGBChange', 'ChangeType', 'all'], default = 'all', help = "Choose which kind of output you want. Defaults to all possible outputs.")
