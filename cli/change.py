@@ -101,7 +101,7 @@ if __name__ == '__main__':
     try:
         main(args.data_directory, args.latitude, args.longitude, args.year1, args.year2,
         output = args.output,
-        lee_filter = args.lee_filter,
+        lee_filter = args.nofilter,
         downsample_factor = args.downsample_factor,
         forest_threshold = args.forest_threshold,
         area_threshold = args.area_threshold,
