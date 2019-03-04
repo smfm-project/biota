@@ -209,7 +209,7 @@ Help for this functionality can be viewed by typing ``biota change --help`` or `
 
 .. code-block:: console
 
-	usage: change.py [-h] [-lat DEG] [-lon DEG] [-y1 Y] [-y2 Y]
+	usage: change.py [-h] [-dir DIR] [-lat DEG] [-lon DEG] [-y1 YR] [-y2 YR]
 					 [-o {AGBChange,ChangeType,all}] [-nf] [-ds N] [-od DIR] [-v]
 					 [-ct ha] [-mt tC/ha] [-it PC] [-ft tC/ha] [-at ha]
 
@@ -217,12 +217,14 @@ Help for this functionality can be viewed by typing ``biota change --help`` or `
 	2 years.
 
 	Required arguments:
+	  -dir DIR, --data_directory DIR
+							Path to directory containing ALOS mosaic data.
 	  -lat DEG, --latitude DEG
 							Latitude of tile to process (upper-left corner).
 	  -lon DEG, --longitude DEG
 							Longitude of tile to process (upper-left corner).
-	  -y1 Y, --year1 Y      First year of data to process.
-	  -y2 Y, --year2 Y      Second year of data to process.
+	  -y1 YR, --year1 YR    First year of data to process.
+	  -y2 YR, --year2 YR    Second year of data to process.
 
 	Optional arguments:
 	  -o {AGBChange,ChangeType,all}, --output {AGBChange,ChangeType,all}
@@ -259,12 +261,6 @@ Help for this functionality can be viewed by typing ``biota change --help`` or `
 							If you have selected ChangeType as an output, choose
 							the minimum forest area threshold in each input image.
 							Defaults to 0 ha.
-
-		usage: change_cmd.py [-h] [-dir DIR] [-lat DEG] [-lon DEG] [-y1 Y [Y ...]]
-							 [-y2 Y [Y ...]] [-o {AGB,ChangeType,all}] [-lf]
-							 [-ds FACTOR] [-od DIR] [-ft THRESHOLD] [-at THRESHOLD]
-							 [-cat CAT] [-cmt CMT] [-cit CIT]
-
 
 AGB Change
 ~~~~~~~~~~
