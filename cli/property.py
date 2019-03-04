@@ -110,7 +110,7 @@ if __name__ == '__main__':
 		units = args.units,
         forest_threshold = args.forest_threshold,
         area_threshold = args.area_threshold,
-        output_dir = args.output_dir
+        output_dir = args.output_dir,
 		verbose = args.verbose)
     except KeyboardInterrupt:
         sys.exit(0)
