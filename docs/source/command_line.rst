@@ -82,46 +82,58 @@ The ``biota`` tool features a command line option to produce a raster of vegetat
 Help for this functionality can be viewed by typing ``biota property --help`` or ``biota property -h``:
 
 .. code-block:: console
+    
+	usage: property.py [-h] [-dir DIR] [-lat DEG] [-lon DEG] [-y Y [Y ...]]
+					   [-o {Gamma0,AGB,WoodyCover,all}] [-nf] [-ds N] [-od DIR]
+					   [-v] [-p POL] [-u units] [-ft tC/ha] [-at ha]
 
-    usage: property.py [-h] [-dir DIR] [-lat DEG] [-lon DEG] [-y Y [Y ...]]
-                           [-o {Gamma0,AGB,WoodyCover,all}] [-lf] [-ds FACTOR]
-                           [-od DIR] [-pz {HV,HH,VH,VV}] [-ft THRESHOLD]
-                           [-at THRESHOLD]
+	Process ALOS-1/2 mosaic data to prpoduce estimates of forest cover and
+	biomass.
 
-    Process downloaded ALOS-1/2 data to output biomass and forest cover.
+	Required arguments:
+	  -dir DIR, --data_directory DIR
+							Path to directory containing ALOS mosaic data.
+	  -lat DEG, --latitude DEG
+							Latitude of tile to process (upper-left corner).
+	  -lon DEG, --longitude DEG
+							Longitude of tile to process (upper-left corner).
+	  -y Y [Y ...], --years Y [Y ...]
+							Years of data to process.
 
-    Required arguments:
-      -dir DIR, --data_directory DIR
-                            absolute path to data directory
-      -lat DEG, --latitude DEG
-                            Latitude of tile upper-left corner.
-      -lon DEG, --longitude DEG
-                            Longitude of tile upper-left corner.
-      -y Y [Y ...], --years Y [Y ...]
-                            Years of data to process.
+	Optional arguments:
+	  -o {Gamma0,AGB,WoodyCover,all}, --output {Gamma0,AGB,WoodyCover,all}
+							Choose which kind of output you want. Defaults to all
+							possible outputs.
+	  -nf, --nofilter       Use this flag if you don't want to apply a speckle
+							filter.
+	  -ds N, --downsample_factor N
+							Apply downsampling to inputs by specifying an integer
+							factor to downsample by. Defaults to no downsampling.
+	  -od DIR, --output_dir DIR
+							Optionally specify an output directory. Defaults to
+							the present working directory.
+	  -v, --verbose         Print progress to terminal. Defaults to False.
 
-    Optional arguments:
-      -o {Gamma0,AGB,WoodyCover,all}, --output {Gamma0,AGB,WoodyCover,all}
-                            Choose which kind of output you want. Defaults to all
-                            possible outputs.
-      -lf, --speckle        Apply speckle filtering. Defaults to True.
-      -ds FACTOR, --downsample FACTOR
-                            Apply downsampling. Defaults to 1.
-      -od DIR, --output_dir DIR
-                            Optionally specify an output directory. Defaults to
-                            the present working directory.
+	Output-specific arguments:
+	  -p POL, --polarisation POL
+							If you have selected Gamma0 as an output, choose the
+							polarisation. Defaults to HV.
+	  -u units, --units units
+							If you have selected Gamma0 as an output, choose the
+							outputs units. Defaults to 'natural' units.
+	  -ft tC/ha, --forest_threshold tC/ha
+							If you have selected WoodyCover as an output, choose
+							the miminum forest biomass threshold. Defaults to 10
+							tC/ha.
+	  -at ha, --area_threshold ha
+							If you have selected WoodyCover as an output, choose
+							the minimum forest area threshold. Defaults to 0 ha.
 
-    Output-specific arguments:
-      -pz {HV,HH,VH,VV}, --polarisation {HV,HH,VH,VV}
-                            If you have selected Gamma0 as an output, choose the
-                            polarisation. Defaults to HV.
-      -ft THRESHOLD, --forest_threshold THRESHOLD
-                            If you have selected WoodyCover as an output, choose
-                            the miminum forest biomass threshold. Defaults to
-                            10tC/ha.
-      -at THRESHOLD, --area_threshold THRESHOLD
-                            If you have selected WoodyCover as an output, choose
-                            the minimum forest area threshold. Defaults to 0ha.
+		usage: property.py [-h] [-dir DIR] [-lat DEG] [-lon DEG] [-y Y [Y ...]]
+							   [-o {Gamma0,AGB,WoodyCover,all}] [-lf] [-ds FACTOR]
+							   [-od DIR] [-pz {HV,HH,VH,VV}] [-ft THRESHOLD]
+							   [-at THRESHOLD]
+
 
 Gamma0 backscatter
 ~~~~~~~~~~~~~~~~~~

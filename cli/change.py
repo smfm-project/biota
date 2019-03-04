@@ -19,7 +19,7 @@ def main(dir, lat, lon, year1, year2,
         change_area_threshold = 0,
         change_magnitude_threshold = 0,
         change_intensity_threshold = 0,
-        output_dir = os.getcwd()
+        output_dir = os.getcwd(),
 		verbose = False):
     '''
     Comment this meaningfully
@@ -46,7 +46,7 @@ def main(dir, lat, lon, year1, year2,
             if verbose: print ("Calculating Change Type...")
             ChangeType = tile_change.getChangeType(output = True)
         
-		if verbose: print ("Done!")
+        if verbose: print ("Done!")
     
     except KeyboardInterrupt:
         sys.exit(0)
