@@ -1,16 +1,10 @@
 import argparse
-import datetime
-import ftplib
-import math
 import os
-import subprocess
 import sys
-import tarfile
-import tqdm
+
+import biota.download
 
 import pdb
-
-import download as dld
 
 """
 This is the script that runs the command line for download.py
@@ -18,8 +12,10 @@ This is the script that runs the command line for download.py
 
 
 
-
-def main(lat, lon, years, large_tile = False, output_dir = os.getcwd(), remove = False):
+def main(lat, lon, years, 
+         large_tile = False,
+		 output_dir = os.getcwd(),
+		 remove = False):
     '''
     Run through data download and preparation chain
     '''
@@ -28,13 +24,13 @@ def main(lat, lon, years, large_tile = False, output_dir = os.getcwd(), remove =
     if type(years) != list: years = [years]
 
     # Cleanse input years
-    dld.checkYears(args.years)
+    biota.download.checkYears(years)
 
     for year in years:
 
         # Download file, provided it exists, else continue. Exit with KeyboardInterrupt.
         try:
-            filepath = dld.download(lat, lon, year, large_tile = large_tile, output_dir = output_dir, verbose = True)
+            filepath = biota.download.download(lat, lon, year, large_tile = large_tile, output_dir = output_dir, verbose = True)
         except KeyboardInterrupt:
             sys.exit(0)
         except Exception as e:
@@ -42,7 +38,7 @@ def main(lat, lon, years, large_tile = False, output_dir = os.getcwd(), remove =
             continue
 
         # Decompress downloaded file, and delete original if remove == True
-        dld.decompress(filepath, remove = remove)
+        biota.download.decompress(filepath, remove = remove)
 
 
 

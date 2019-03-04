@@ -1,7 +1,9 @@
 Worked example: part 1
 ======================
 
-In this worked example we'll run through an example based on an area of Southeastern Tanzania called Kilwa District (Fig). This is a location where the University of Edinburgh coordinates a network of forest plots where there is good data on aboveground biomass.
+The other interface of ``biota`` is through Python. We recommend this to advanced users, and those looking to adapt the methods used by ``biota`` to produce their own outputs.
+
+In this worked example we'll run through an example based on an area of Southeastern Tanzania called Kilwa District. This is a location where the University of Edinburgh coordinates a network of forest plots where there is good data on aboveground biomass.
 
 In this section we'll use ``biota`` to download ALOS mosaic data for the Kilwa region.
 

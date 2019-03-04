@@ -1,7 +1,7 @@
 Worked example: part 2
 ======================
 
-In this section we'll use ``biota`` to generate maps of gamma0 backscatter, AGB, and forest cover. To use ``biota3`` instead of ``biota``, replace each mention of ``biota`` with ``biota3``.
+In this section we'll use ``biota`` to generate maps of gamma0 backscatter, AGB, and forest cover. To use ``biota`` instead of ``biota``, replace each mention of ``biota`` with ``biota``.
 
 Open Python and import biota
 ----------------------------
@@ -140,13 +140,13 @@ To load these tiles and save a raster of backscatter through the command line, r
 
 .. code-block:: console
 
-    biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o Gamma0 -lf
+    biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o Gamma0 -lf
 
 To change the default polarisation setting, add the flag ``-pz`` and enter the desired polarisation. For instance, to get 'HH' data:
 
 .. code-block:: console
 
-    biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o Gamma0 -lf -pz HH
+    biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o Gamma0 -lf -pz HH
 
 NB; biota does not support data visualisation in the command line, as many users will not have a graphic interface from their terminal. To visualise DATA, load the output raster in GIS software or plot it with Python.
 
@@ -175,7 +175,7 @@ Or, from the command line, run:
 
 .. code-block:: console
 
-    biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o AGB -lf
+    biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o AGB -lf
 
 .. note:: By default ``biota`` uses an equation calibrated for ALOS-1 in miombo woodlands of Southern Africa. It's advisable to have a locally calibrated biomass-backscatter equation to improve predictions.
 
@@ -202,7 +202,7 @@ To execute this from the command line, run:
 
 .. code-block:: console
 
-    biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o WoodyCover -lf
+    biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o WoodyCover -lf
 
 By default ``biota`` will use a generic definition of forest of 10 tC/ha with no minimum area. In the next section we'll discuss how this and other forest definitons can be customised.
 
@@ -236,7 +236,7 @@ In the command line, the flag ``-lf`` deactivates the speckle-filtering (ON by d
 
 .. code-block:: console
 
-    biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o AGB
+    biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o AGB
 
 
 
@@ -264,7 +264,7 @@ In the command line, the flag ``-ds`` activates downsampling and is followed by 
 
 .. code-block:: console
 
-   biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o AGB -lf
+   biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o AGB -lf
 
 
 
@@ -292,7 +292,7 @@ In the command line, the flag ``-`` activates downsampling and is followed by th
 
 .. code-block:: console
 
-    biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o WoodyCover -lf -ft 15 -at 1
+    biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o WoodyCover -lf -ft 15 -at 1
 
 
 
@@ -308,7 +308,7 @@ By default, GeoTiffs are output to the current working directory. This may not b
 From the command line:
 .. code-block:: console
 
-    biota3 snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o WoodyCover -lf -od /path/to/output/
+    biota snapshot -dir /path/to/data/ -lat -9 -lon 38, -y 2007 -o WoodyCover -lf -od /path/to/output/
 
 Masking data
 ------------

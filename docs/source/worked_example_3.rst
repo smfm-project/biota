@@ -80,26 +80,24 @@ Like with a single tile, ``biota`` can display and output AGB change to GeoTiff:
 
 The predominance of red colours in this tile indicate a general reduction to AGB, with areas of dark red showing locations of deforestation.
 
-
 To reproduce this result in the command line, run:
 
 .. code-block:: console
 
-    biota3 change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o AGB -lf
-
+    biota change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o AGB -lf
 
 
 Classifying change type
 -----------------------
 
-Changes are classified based on a series of thresholds:
+Changes in AGB are classified based on a series of thresholds:
 
 +--------------------------------+---------------------------------------------------------------------------+
 | **Threshold**                  | **Description**                                                           |
 +--------------------------------+---------------------------------------------------------------------------+
 | ``forest_threshold``           | The minimum AGB that defines a forest area (tC/ha).                       |
 +--------------------------------+---------------------------------------------------------------------------+
-| ``change_area_threshold``      | The minimum area over which a change must ocurr (ha).                     |
+| ``change_area_threshold``      | The minimum area over which a change must occurr (ha).                    |
 +--------------------------------+---------------------------------------------------------------------------+
 | ``change_magnitude_threshold`` | The minimum absolute change of AGB that defines a change event (tC/ha).   |
 +--------------------------------+---------------------------------------------------------------------------+
@@ -135,12 +133,11 @@ To classify each pixel by its change type, use the function getChangeType():
    :scale: 50 %
    :align: center
 
-
 To reproduce this result in the command line, run:
 
 .. code-block:: console
 
-   biota3 change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf
+   biota change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf
 
 
 Further options for calculating change
@@ -161,8 +158,7 @@ To reproduce this result in the command line, run:
 
 .. code-block:: console
 
-   biota3 change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cat 1
-
+   biota change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cat 1
 
 
 Change magnitude threshold
@@ -179,7 +175,7 @@ To reproduce this result in the command line, run:
 
 .. code-block:: console
 
-   biota3 change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cmt 5
+   biota change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cmt 5
 
 
 Change intensity threshold
@@ -196,7 +192,7 @@ To reproduce this result in the command line, run:
 
 .. code-block:: console
 
-   biota3 change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cit 0.2
+   biota change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cit 0.2
 
 
 
@@ -228,12 +224,11 @@ If we repeat the classification of change type, but this time with a ``change_ar
    :scale: 50 %
    :align: center
 
-
 To reproduce this result in the command line, run:
 
 .. code-block:: console
 
-    biota3 change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cat 1 -cmt 5
+    biota change -dir /path/to/data/ -lat -9 -lon 38, -y1 2007 -y2 2010 -o ChangeType -lf -cat 1 -cmt 5
 
 
 Masking data
