@@ -28,7 +28,7 @@ def main(dir, lat, lon, years,
 		units = 'natural',
         forest_threshold = 10,
         area_threshold = 0,
-        output_dir = os.getcwd()
+        output_dir = os.getcwd(),
 		verbose = False):
     '''
     Load an ALOS tile with biota, and generate specified output
