@@ -93,7 +93,7 @@ if __name__ == '__main__':
     # Arguments specific to a type of output
     specific.add_argument('-p', '--polarisation', metavar = 'POL', choices = ['HV', 'HH'], default = 'HV', help = "If you have selected Gamma0 as an output, choose the polarisation. Defaults to HV.")
     specific.add_argument('-u', '--units', metavar = 'units', choices = ['natural', 'decibels'], default = 'natural', help = "If you have selected Gamma0 as an output, choose the outputs units. Defaults to 'natural' units.")    
-	specific.add_argument('-ft', '--forest_threshold', metavar = 'tC/ha', action = 'store', type = float, default = 10, help = "If you have selected WoodyCover as an output, choose the miminum forest biomass threshold. Defaults to 10 tC/ha.")
+    specific.add_argument('-ft', '--forest_threshold', metavar = 'tC/ha', action = 'store', type = float, default = 10, help = "If you have selected WoodyCover as an output, choose the miminum forest biomass threshold. Defaults to 10 tC/ha.")
     specific.add_argument('-at', '--area_threshold', metavar = 'ha', action = 'store', type = float, default = 0, help = "If you have selected WoodyCover as an output, choose the minimum forest area threshold. Defaults to 0 ha.")
 
 
@@ -115,5 +115,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         sys.exit(0)
     except Exception as e:
-	    print(e)
-		sys.exit(0)
+        print(e)
+        sys.exit(0)
