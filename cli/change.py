@@ -84,7 +84,7 @@ if __name__ == '__main__':
     # Arguments specific to a type of output
     specific.add_argument('-ct', '--change_area_threshold', metavar = 'ha', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose a threshold for a minimum change in forest area required to be flagged as a change. Defaults to 0 ha.")
     specific.add_argument('-mt', '--change_magnitude_threshold', metavar = 'tC/ha', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose the minimum absolute change in biomass to be flagged as a change. Defaults to 0 tC/ha.")
-    specific.add_argument('-it', '--change_intensity_threshold', metavar = '%', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose the minimum relative change in biomass to be flagged as a change. Defaults to 0 \%.")
+    specific.add_argument('-it', '--change_intensity_threshold', metavar = '\%', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose the minimum relative change in biomass to be flagged as a change. Defaults to 0 \%.")
 	
     specific.add_argument('-ft', '--forest_threshold', metavar = 'tC/ha', action = 'store', type = float, default = 10, help = "If you have selected ChangeType as an output, choose the miminum forest biomass threshold in each input image. Defaults to 10 tC/ha.")
     specific.add_argument('-at', '--area_threshold', metavar = 'ha', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose the minimum forest area threshold in each input image. Defaults to 0 ha.")
