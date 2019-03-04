@@ -93,8 +93,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 	
 	# Warn about units
-	if args.change_intensity_threshold < 1 and args.change_intensity_threshold > 0: "WARNING: Change intensity threshold should be specified in units of %. Did you specify it as a proportion by accident?"
-	change_intensity_threshold = args.change_intensity_threshold / 100.
+    if args.change_intensity_threshold < 1 and args.change_intensity_threshold > 0: "WARNING: Change intensity threshold should be specified in units of %. Did you specify it as a proportion by accident?"
+    change_intensity_threshold = args.change_intensity_threshold / 100.
 
     # Run through entire processing sequence
     try:
@@ -108,7 +108,7 @@ if __name__ == '__main__':
         change_magnitude_threshold = args.change_magnitude_threshold,
         change_intensity_threshold = change_intensity_threshold,
         output_dir = args.output_dir,
-		verbose = args.verbose)
+        verbose = args.verbose)
     
     except KeyboardInterrupt:
         sys.exit(0)
