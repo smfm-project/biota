@@ -209,57 +209,62 @@ Help for this functionality can be viewed by typing ``biota change --help`` or `
 
 .. code-block:: console
 
-    usage: change_cmd.py [-h] [-dir DIR] [-lat DEG] [-lon DEG] [-y1 Y [Y ...]]
-                         [-y2 Y [Y ...]] [-o {AGB,ChangeType,all}] [-lf]
-                         [-ds FACTOR] [-od DIR] [-ft THRESHOLD] [-at THRESHOLD]
-                         [-cat CAT] [-cmt CMT] [-cit CIT]
+	usage: change.py [-h] [-lat DEG] [-lon DEG] [-y1 Y] [-y2 Y]
+					 [-o {AGBChange,ChangeType,all}] [-nf] [-ds N] [-od DIR] [-v]
+					 [-ct ha] [-mt tC/ha] [-it PC] [-ft tC/ha] [-at ha]
 
-    Process downloaded ALOS-1/2 data to output biomass and forest cover change
-    between 2 years.
+	Process ALOS-1/2 moasic data to output biomass and woody cover change between
+	2 years.
 
-    Required arguments:
-      -dir DIR, --data_directory DIR
-                            absolute path to data directory
-      -lat DEG, --latitude DEG
-                            Latitude of tile upper-left corner.
-      -lon DEG, --longitude DEG
-                            Longitude of tile upper-left corner.
-      -y1 Y [Y ...], --year1 Y [Y ...]
-                            First year of data to process.
-      -y2 Y [Y ...], --year2 Y [Y ...]
-                            Second year of data to process.
+	Required arguments:
+	  -lat DEG, --latitude DEG
+							Latitude of tile to process (upper-left corner).
+	  -lon DEG, --longitude DEG
+							Longitude of tile to process (upper-left corner).
+	  -y1 Y, --year1 Y      First year of data to process.
+	  -y2 Y, --year2 Y      Second year of data to process.
 
-    Optional arguments:
-      -o {AGB,ChangeType,all}, --output {AGB,ChangeType,all}
-                            Choose which kind of output you want. Defaults to all
-                            possible outputs.
-      -lf, --speckle        Apply speckle filtering. Defaults to True.
-      -ds FACTOR, --downsample FACTOR
-                            Apply downsampling. Defaults to 1.
-      -od DIR, --output_dir DIR
-                            Optionally specify an output directory. Defaults to
-                            the present working directory.
+	Optional arguments:
+	  -o {AGBChange,ChangeType,all}, --output {AGBChange,ChangeType,all}
+							Choose which kind of output you want. Defaults to all
+							possible outputs.
+	  -nf, --nofilter       Use this flag if you don't want to apply a speckle
+							filter.
+	  -ds N, --downsample_factor N
+							Apply downsampling to inputs by specifying an integer
+							factor to downsample by. Defaults to no downsampling.
+	  -od DIR, --output_dir DIR
+							Optionally specify an output directory. Defaults to
+							the present working directory.
+	  -v, --verbose         Print progress to terminal. Defaults to False.
 
-    Output-specific arguments:
-      -ft THRESHOLD, --forest_threshold THRESHOLD
-                            If you have selected WoodyCover as an output, choose
-                            the miminum forest biomass threshold. Defaults to
-                            10tC/ha.
-      -at THRESHOLD, --area_threshold THRESHOLD
-                            If you have selected WoodyCover as an output, choose
-                            the minimum forest area threshold. Defaults to 0ha.
-      -cat CAT, --change_area_threshold CAT
-                            If you have selected ChangeType as an output, choose
-                            the minimum change in forest area threshold. Defaults
-                            to 0ha.
-      -cmt CMT, --change_magnitude_threshold CMT
-                            If you have selected ChangeType as an output, choose
-                            the minimum change in biomass threshold. Defaults to
-                            0tC/ha.
-      -cit CIT, --change_intensity_threshold CIT
-                            If you have selected ChangeType as an output, choose
-                            the minimum relative change in forest biomass
-                            threshold. Defaults to 0.
+	Output-specific arguments:
+	  -ct ha, --change_area_threshold ha
+							If you have selected ChangeType as an output, choose a
+							threshold for a minimum change in forest area required
+							to be flagged as a change. Defaults to 0 ha.
+	  -mt tC/ha, --change_magnitude_threshold tC/ha
+							If you have selected ChangeType as an output, choose
+							the minimum absolute change in biomass to be flagged
+							as a change. Defaults to 0 tC/ha.
+	  -it PC, --change_intensity_threshold PC
+							If you have selected ChangeType as an output, choose
+							the minimum relative change in biomass to be flagged
+							as a change. Defaults to 0 percent.
+	  -ft tC/ha, --forest_threshold tC/ha
+							If you have selected ChangeType as an output, choose
+							the miminum forest biomass threshold in each input
+							image. Defaults to 10 tC/ha.
+	  -at ha, --area_threshold ha
+							If you have selected ChangeType as an output, choose
+							the minimum forest area threshold in each input image.
+							Defaults to 0 ha.
+
+		usage: change_cmd.py [-h] [-dir DIR] [-lat DEG] [-lon DEG] [-y1 Y [Y ...]]
+							 [-y2 Y [Y ...]] [-o {AGB,ChangeType,all}] [-lf]
+							 [-ds FACTOR] [-od DIR] [-ft THRESHOLD] [-at THRESHOLD]
+							 [-cat CAT] [-cmt CMT] [-cit CIT]
+
 
 AGB Change
 ~~~~~~~~~~
