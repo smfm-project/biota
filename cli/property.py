@@ -55,7 +55,7 @@ def main(dir, lat, lon, years,
                 if verbose: print ("Calculating Woody Cover...")
                 WoodyCover = tile.getWoodyCover(output = True)
             
-			if verbose: print ("Done!")
+            if verbose: print ("Done!")
 
         except KeyboardInterrupt:
             sys.exit(0)
