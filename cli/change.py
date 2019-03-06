@@ -40,7 +40,7 @@ def main(dir, lat, lon, year1, year2,
         tile_change = biota.LoadChange(tile1, tile2, change_area_threshold = change_area_threshold, change_magnitude_threshold = change_magnitude_threshold, change_intensity_threshold = change_intensity_threshold, output_dir = output_dir)
 
         # Here come the choices
-        if output == 'AGB' or output == 'all':
+        if output == 'AGBChange' or output == 'all':
             if verbose: print ("Calculating Biomass Change...")
             AGBChange = tile_change.getAGBChange(output = True)
         if output == 'ChangeType' or output == 'all':
