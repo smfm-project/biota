@@ -1,7 +1,7 @@
 from setuptools import setup
 
-setup(name='biota3',
-      packages = ['biota3'],
+setup(name='biota',
+      packages = ['biota'],
       version='0.2',
       description='Tools to generate aboveground biomass forest change maps from ALOS PALSAR/PALSAR-2 mosaic data.',
       url='https://bitbucket.org/sambowers/biota',

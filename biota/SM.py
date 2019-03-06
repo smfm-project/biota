@@ -6,7 +6,7 @@ import numpy as np
 from osgeo import gdal
 import scipy.interpolate
 
-import biota3
+import biota
 
 import pdb
 

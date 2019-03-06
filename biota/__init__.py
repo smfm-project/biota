@@ -1,1 +1,1 @@
-from biota3.core import *
+from biota.core import *
