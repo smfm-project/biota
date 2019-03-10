@@ -146,6 +146,7 @@ For example, to produce a calibrated image of Gamma0 backscatter for the HV pola
 
 .. image:: images/cmd_1.png
    :width: 400
+   :align: center
 
 To produce the same image, but using the HH polarisation and with units of decibels:
 
@@ -155,7 +156,7 @@ To produce the same image, but using the HH polarisation and with units of decib
 
 .. image:: images/cmd_2.png
       :width: 400
-
+      :align: center
 If you prefer not to apply a speckle filter:
 
 .. code-block:: console
@@ -164,6 +165,7 @@ If you prefer not to apply a speckle filter:
 
 .. image:: images/cmd_3.png
       :width: 400
+      :align: center
 
 Aboveground biomass
 ~~~~~~~~~~~~~~~~~~~
@@ -176,6 +178,7 @@ To produce a map of aboveground biomass (based on a generic southern African bio
 
 .. image:: images/cmd_4.png
       :width: 400
+      :align: center
 
 Woody cover
 ~~~~~~~~~~~
@@ -190,6 +193,7 @@ To produce a map of woody cover run:
 
 .. image:: images/cmd_5.png
       :width: 400
+      :align: center
 
 To use a custom forest/non-forest threshold (e.g. 20 tC/ha), use the ``-ft`` option:
 
@@ -199,6 +203,7 @@ To use a custom forest/non-forest threshold (e.g. 20 tC/ha), use the ``-ft`` opt
 
 .. image:: images/cmd_6.png
       :width: 400
+      :align: center
 
 Forest definitions often contain a minimum area threshold (e.g. a forest patch must be greater than 1 ha in size) to be counted as forest. To also add a minimum area threshold with ``biota`` use the ``-at`` option:
 
@@ -208,6 +213,7 @@ Forest definitions often contain a minimum area threshold (e.g. a forest patch m
 
 .. image:: images/cmd_7.png
       :width: 400
+      :align: center
 
 Producing vegetation change rasters
 -----------------------------------
@@ -284,6 +290,7 @@ To produce a map of biomass change for the downloaded 1x1 tile at 38 degrees lon
 
 .. image:: images/cmd_8.png
       :width: 400
+      :align: center
 
 Change detection
 ~~~~~~~~~~~~~~~~
@@ -330,6 +337,7 @@ To identify change types with default parameters, use:
 
 .. image:: images/cmd_9.png
       :width: 400
+      :align: center
 
 To apply a minimum area of 1 hectare for a given change:
 
@@ -339,6 +347,7 @@ To apply a minimum area of 1 hectare for a given change:
 
 .. image:: images/cmd_10.png
       :width: 400
+      :align: center
 
 To also apply a minimum absolute change threshod of 5 tC/ha:
 
@@ -348,6 +357,7 @@ To also apply a minimum absolute change threshod of 5 tC/ha:
 
 .. image:: images/cmd_11.png
       :width: 400
+      :align: center
 
 To also apply a minumum relative change threshold of 25 % of biomass change:
 
@@ -357,6 +367,7 @@ To also apply a minumum relative change threshold of 25 % of biomass change:
 
 .. image:: images/cmd_12.png
       :width: 400
+      :align: center
 
 Change detection recipes
 ~~~~~~~~~~~~~~~~~~~~~~~~
