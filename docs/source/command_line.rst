@@ -144,7 +144,8 @@ For example, to produce a calibrated image of Gamma0 backscatter for the HV pola
     
     biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o Gamma0
 
-IMAGE
+.. image:: images/cmd_1.png
+   :width: 400
 
 To produce the same image, but using the HH polarisation and with units of decibels:
 
@@ -152,13 +153,17 @@ To produce the same image, but using the HH polarisation and with units of decib
     
     biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o Gamma0 -u decibels -p HH
 
-IMAGE
+.. image:: images/cmd_2.png
+      :width: 400
 
 If you prefer not to apply a speckle filter:
 
 .. code-block:: console
     
     biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o Gamma0 --nofilter
+
+.. image:: images/cmd_3.png
+      :width: 400
 
 Aboveground biomass
 ~~~~~~~~~~~~~~~~~~~
@@ -169,7 +174,8 @@ To produce a map of aboveground biomass (based on a generic southern African bio
 
     biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o AGB
 
-IMAGE
+.. image:: images/cmd_4.png
+      :width: 400
 
 Woody cover
 ~~~~~~~~~~~
@@ -182,7 +188,8 @@ To produce a map of woody cover run:
 
     biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o WoodyCover
 
-IMAGE
+.. image:: images/cmd_5.png
+      :width: 400
 
 To use a custom forest/non-forest threshold (e.g. 20 tC/ha), use the ``-ft`` option:
 
@@ -190,15 +197,17 @@ To use a custom forest/non-forest threshold (e.g. 20 tC/ha), use the ``-ft`` opt
 
     biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o WoodyCover -ft 20
 
-IMAGE
+.. image:: images/cmd_6.png
+      :width: 400
 
-Forest definitions often contain a minimum area threshold (e.g. a forest patch must be greater than 1 ha in size) to be counted as forest. To perform this with ``biota`` use the ``-at`` option:
+Forest definitions often contain a minimum area threshold (e.g. a forest patch must be greater than 1 ha in size) to be counted as forest. To also add a minimum area threshold with ``biota`` use the ``-at`` option:
 
 .. code-block:: console
 
-    biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o WoodyCover -at 1
+    biota property -dir /path/to/data/ -lon 38 -lat -8 -y 2007 -o WoodyCover -ft 20 -at 1
 
-IMAGE
+.. image:: images/cmd_7.png
+      :width: 400
 
 Producing vegetation change rasters
 -----------------------------------
@@ -275,9 +284,10 @@ To produce a map of biomass change for the downloaded 1x1 tile at 38 degrees lon
 
 .. code-block:: console
 
-    biota change -dir /path/to/data/ -lon 38 -lat -8 -y1 2007 -y2 2010 -o AGB
+    biota change -dir /path/to/data/ -lon 38 -lat -8 -y1 2007 -y2 2010 -o AGBChange
 
-IMAGE
+.. image:: images/cmd_8.png
+      :width: 400
 
 Change detection
 ~~~~~~~~~~~~~~~~
@@ -322,11 +332,17 @@ To identify change types with default parameters, use:
     
     biota change -dir /path/to/data/ -lon 38 -lat -8 -y1 2007 -y2 2010 -o ChangeType
 
+.. image:: images/cmd_9.png
+      :width: 400
+
 To apply a minimum area of 1 hectare for a given change:
 
 .. code-block:: console
     
     biota change -dir /path/to/data/ -lon 38 -lat -8 -y1 2007 -y2 2010 -o ChangeType -ct 1
+
+.. image:: images/cmd_10.png
+      :width: 400
 
 To also apply a minimum absolute change threshod of 5 tC/ha:
 
@@ -334,13 +350,17 @@ To also apply a minimum absolute change threshod of 5 tC/ha:
     
     biota change -dir /path/to/data/ -lon 38 -lat -8 -y1 2007 -y2 2010 -o ChangeType -ct 1 -mt 5
 
+.. image:: images/cmd_11.png
+      :width: 400
+
 To also apply a minumum relative change threshold of 25 % of biomass change:
 
 .. code-block:: console
     
     biota change -dir /path/to/data/ -lon 38 -lat -8 -y1 2007 -y2 2010 -o ChangeType -ct 1 -mt 5 -it 25
 
-IMAGE
+.. image:: images/cmd_12.png
+      :width: 400
 
 Change detection recipes
 ~~~~~~~~~~~~~~~~~~~~~~~~
