@@ -6,7 +6,7 @@ import os
 from PIL import Image, ImageDraw
 import scipy.ndimage as ndimage
 
-import biota3.IO
+import biota.IO
 
 import pdb
 
@@ -225,7 +225,7 @@ def maskRaster(tile, raster, classes = [], buffer_size = 0.):
     assert os.path.exists(raster), "GeoTiff file %s does not exist in the file system."%raster
 
     # Load raster + reporject to match tile
-    reampled_image = biota3.IO.loadRaster(raster, tile)
+    reampled_image = biota.IO.loadRaster(raster, tile)
 
     # Identify pixels that are classes to be masked
     mask = maskArray(tile, reampled_image, classes = classes, buffer_size = buffer_size)
@@ -451,20 +451,20 @@ def updateMask(tile, filename, buffer_size = 0., classes = []):
     if file_type == 'shp':
 
         # Rasterize the shapefile, optionally with a buffer
-        mask = biota3.mask.maskShapefile(tile, filename, buffer_size = buffer_size)
+        mask = biota.mask.maskShapefile(tile, filename, buffer_size = buffer_size)
 
     elif file_type in ['tif', 'tiff', 'vrt']:
 
         assert classes != [], "If adding a GeoTiff or VRT file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
 
         # Resample and extract values from shapefile, optionally with a buffer
-        mask = biota3.mask.maskRaster(tile, filename, classes = classes, buffer_size = buffer_size)
+        mask = biota.mask.maskRaster(tile, filename, classes = classes, buffer_size = buffer_size)
 
     else:
 
         if filename.dtype != np.bool:
             assert classes != [], "If adding a non-boolean numpy array file to the mask, you must also specify the class values to add to the mask (e.g. classes = [20, 160, 170, 190, 210])."
 
-        mask = biota3.mask.maskArray(tile, filename, classes = classes, buffer_size = buffer_size)
+        mask = biota.mask.maskArray(tile, filename, classes = classes, buffer_size = buffer_size)
 
     return mask

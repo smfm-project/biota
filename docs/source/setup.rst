@@ -84,7 +84,7 @@ To avoid having to reference the full path of the Python scripts in biota when u
 
 .. code-block:: console
 
-    echo "alias biota='_biota() { python ~/biota/cli/"$1".py $(shift; echo "$@") ;}; _biota'" >> ~/.bashrc
+    echo "alias biota='_biota() { python ~/full/path/to/biota/cli/"$1".py $(shift; echo "$@") ;}; _biota'" >> ~/.bashrc
 
 This creates a function that enables you to call ``biota`` just by typing ``biota`` in your terminal window. To run this function, restart your terminal or run ``bash`` (you will only need to do this once). You will then need to activate the ``biota`` environment once again.
 

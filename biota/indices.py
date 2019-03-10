@@ -7,7 +7,7 @@ from scipy.ndimage.measurements import label
 
 import pdb
 
-import biota3.IO
+import biota.IO
 
 def getContiguousAreas(data, value, min_pixels = 1, contiguity = 'queen'):
     '''
@@ -241,10 +241,10 @@ def calculateLDI(tile, patch_size = 'auto', output = False, show = False):
             LDI.mask[n, m] = True
 
     # Output GeoTiff
-    if output: biota3.IO.outputGeoTiff(LDI, tile.output_pattern%'LDI', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
+    if output: biota.IO.outputGeoTiff(LDI, tile.output_pattern%'LDI', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
 
     # Display
-    if show: biota3.IO.showFigure(LDI, tile.lat, tile.lon, title = 'LDI', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'Oranges')
+    if show: biota.IO.showFigure(LDI, tile.lat, tile.lon, title = 'LDI', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'Oranges')
 
     return LDI
 
@@ -274,10 +274,10 @@ def calculateLDIChange(tile_change, patch_size = 'auto', output = False, show = 
     LDI_change = LDI_t2 - LDI_t1
 
     # Output GeoTiff
-    if output: biota3.IO.outputGeoTiff(LDI_change, tile_change.output_pattern%'LDIChange', tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
+    if output: biota.IO.outputGeoTiff(LDI_change, tile_change.output_pattern%'LDIChange', tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
 
     # Display
-    if show: biota3.IO.showFigure(LDI_change, tile_change.lat, tile_change.lon, title = 'LDI Change', cbartitle = '%', vmin = -25, vmax = 25, cmap = 'RdBu_r')
+    if show: biota.IO.showFigure(LDI_change, tile_change.lat, tile_change.lon, title = 'LDI Change', cbartitle = '%', vmin = -25, vmax = 25, cmap = 'RdBu_r')
 
     return LDI_change
 
@@ -321,10 +321,10 @@ def calculateTWC(tile, patch_size = 'auto', output = False, show = False):
             TWC.mask[n, m] = True
 
     # Output GeoTiff
-    if output: biota3.IO.outputGeoTiff(TWC, tile.output_pattern%'TWC', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
+    if output: biota.IO.outputGeoTiff(TWC, tile.output_pattern%'TWC', tile.shrinkGeoT(patch_size), tile.proj, output_dir = tile.output_dir, dtype = gdal.GDT_Int32, nodata = tile.nodata)
 
     # Display
-    if show: biota3.IO.showFigure(TWC, tile.lat, tile.lon, title = 'TWC', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'YlGn')
+    if show: biota.IO.showFigure(TWC, tile.lat, tile.lon, title = 'TWC', cbartitle = '%', vmin = 0, vmax = 100, cmap = 'YlGn')
 
     return TWC
 
@@ -355,10 +355,10 @@ def calculateWCC(tile_change, patch_size = 'auto', output = False, show = False)
     WCC = TWC_t2 - TWC_t1
 
     # Output GeoTiff
-    if output: biota3.IO.outputGeoTiff(WCC, tile_change.output_pattern%'WCC', tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata_byte)
+    if output: biota.IO.outputGeoTiff(WCC, tile_change.output_pattern%'WCC', tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata_byte)
 
     # Display
-    if show: biota3.IO.showFigure(WCC, tile_change.lat, tile_change.lon, title = 'WCC', cbartitle = '%', vmin = -30, vmax = 30, cmap = 'RdBu')
+    if show: biota.IO.showFigure(WCC, tile_change.lat, tile_change.lon, title = 'WCC', cbartitle = '%', vmin = -30, vmax = 30, cmap = 'RdBu')
 
 
 def calculateProportionalChange(tile_change, change_type, patch_size = 'auto', output = False, show = False):
@@ -398,10 +398,10 @@ def calculateProportionalChange(tile_change, change_type, patch_size = 'auto', o
             change_downsampled.mask[n, m] = True
 
     # Output GeoTiff
-    if output: biota3.IO.outputGeoTiff(change_downsampled, tile_change.output_pattern%'%sDownsampled'%change_type.title(), tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
+    if output: biota.IO.outputGeoTiff(change_downsampled, tile_change.output_pattern%'%sDownsampled'%change_type.title(), tile_change.shrinkGeoT(patch_size), tile_change.proj, output_dir = tile_change.output_dir, dtype = gdal.GDT_Int32, nodata = tile_change.nodata)
 
     # Display
-    if show: biota3.IO.showFigure(change_downsampled, tile_change.lat, tile_change.lon, title = '%s Downsampled'%change_type.title(), cbartitle = '%', vmin = 0, vmax = 50, cmap = 'Spectral_r')
+    if show: biota.IO.showFigure(change_downsampled, tile_change.lat, tile_change.lon, title = '%s Downsampled'%change_type.title(), cbartitle = '%', vmin = 0, vmax = 50, cmap = 'Spectral_r')
 
 
     return change_downsampled
