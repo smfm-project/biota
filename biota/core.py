@@ -741,7 +741,7 @@ class LoadChange(object):
     Input is two mosaic tiles from LoadTile, will output maps and change statistics.
     """
 
-    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, contiguity = 'queen', output_dir = os.getcwd(), output = False):
+    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, deforestation_threshold = None, contiguity = 'queen', output_dir = os.getcwd(), output = False):
         '''
         Initialise
         '''
@@ -773,7 +773,11 @@ class LoadChange(object):
         self.change_intensity_threshold = change_intensity_threshold
         self.change_magnitude_threshold = change_magnitude_threshold
         self.change_area_threshold = change_area_threshold
-
+        self.deforestation_threshold = deforestation_threshold
+        
+        # Set deforestation_treshold equal to forest_threshold if not in use
+        if self.deforestation_threshold is None: self.deforestation_threshold = self.tile_t1.forest_threshold
+        
         self.contiguity = contiguity
 
         self.year_t1 = tile_t1.year
@@ -955,12 +959,15 @@ class LoadChange(object):
                 CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
                 CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
                 NOCHANGE = CHANGE == False
-
+            
+            # Deforestation can be dramatic; allow a separate treshold to specify an end-biomass for deforestation 
+            DEFORESTED = self.tile_t2.getAGB() < self.deforestation_threshold
+            
             change_type = {}
 
             # These are all the possible definitions. Note: they *must* add up to one.
-            change_type['deforestation'] = F_NF & CHANGE
-            change_type['degradation'] = F_F & CHANGE & DECREASE
+            change_type['deforestation'] = F_NF & CHANGE & DEFORESTED
+            change_type['degradation'] = (F_F & CHANGE & DECREASE) | (F_NF & CHANGE & DEFORESTED == False)
             change_type['minorloss'] = (F_F | F_NF) & NOCHANGE & DECREASE
 
             change_type['afforestation'] = NF_F & CHANGE

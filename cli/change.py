@@ -20,6 +20,7 @@ def main(dir, lat, lon, year1, year2,
         change_area_threshold = 0,
         change_magnitude_threshold = 0,
         change_intensity_threshold = 0,
+        deforestation_threshold = None,
         output_dir = os.getcwd(),
 		verbose = False):
     '''
@@ -37,7 +38,7 @@ def main(dir, lat, lon, year1, year2,
         tile2 = biota.LoadTile(dir, lat, lon, year2, lee_filter = lee_filter, downsample_factor = downsample_factor, forest_threshold = forest_threshold, area_threshold = area_threshold, output_dir = output_dir)
         
 		# Load a change object
-        tile_change = biota.LoadChange(tile1, tile2, change_area_threshold = change_area_threshold, change_magnitude_threshold = change_magnitude_threshold, change_intensity_threshold = change_intensity_threshold, output_dir = output_dir)
+        tile_change = biota.LoadChange(tile1, tile2, change_area_threshold = change_area_threshold, change_magnitude_threshold = change_magnitude_threshold, change_intensity_threshold = change_intensity_threshold, deforestation_threshold = deforestation_threshold, output_dir = output_dir)
 
         # Here come the choices
         if output == 'AGBChange' or output == 'all':
@@ -87,6 +88,7 @@ if __name__ == '__main__':
     specific.add_argument('-ct', '--change_area_threshold', metavar = 'ha', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose a threshold for a minimum change in forest area required to be flagged as a change. Defaults to 0 ha.")
     specific.add_argument('-mt', '--change_magnitude_threshold', metavar = 'tC/ha', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose the minimum absolute change in biomass to be flagged as a change. Defaults to 0 tC/ha.")
     specific.add_argument('-it', '--change_intensity_threshold', metavar = 'PC', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose the minimum relative change in biomass to be flagged as a change. Defaults to 0 percent.")
+    specific.add_argument('-dt', '--deforestation_threshold', metavar = 'tC/ha', action = 'store', type = float, default = None, help = "If you have selected ChangeType as an output, choose the maxmimum residual biomass accepted in a deforested area. Remaining 'deforestation' will be allocated to 'degradation'. Defaults to the forest_threshold.")
 	
     specific.add_argument('-ft', '--forest_threshold', metavar = 'tC/ha', action = 'store', type = float, default = 10, help = "If you have selected ChangeType as an output, choose the miminum forest biomass threshold in each input image. Defaults to 10 tC/ha.")
     specific.add_argument('-at', '--area_threshold', metavar = 'ha', action = 'store', type = float, default = 0, help = "If you have selected ChangeType as an output, choose the minimum forest area threshold in each input image. Defaults to 0 ha.")
@@ -109,6 +111,7 @@ if __name__ == '__main__':
         change_area_threshold = args.change_area_threshold,
         change_magnitude_threshold = args.change_magnitude_threshold,
         change_intensity_threshold = change_intensity_threshold,
+        deforestation_threshold = args.deforestation_threshold,
         output_dir = args.output_dir,
         verbose = args.verbose)
     

@@ -13,7 +13,7 @@ import pdb
 
 
 
-def getChange(data_t1, data_t2, forest_threshold = 10., intensity_threshold = 0.2, area_threshold = 0, output = False):
+def getChange(data_t1, data_t2, forest_threshold = 10., intensity_threshold = 0.2, area_threshold = 0, magnitude_threshold = 0., output = False):
     """
     Returns pixels that meet change detection thresholds for country.
 
@@ -42,7 +42,11 @@ def getChange(data_t1, data_t2, forest_threshold = 10., intensity_threshold = 0.
     NF_NF = np.logical_and(AGB_t1 < forest_threshold, AGB_t2 < forest_threshold)
 
     # Get change pixels given requirements
-    CHANGE = np.logical_or(((AGB_t1 - AGB_t2) / AGB_t1) >= intensity_threshold, ((AGB_t1 - AGB_t2) / AGB_t1) < (- intensity_threshold))
+    CHANGE_INTENSITY = np.logical_or(((AGB_t1 - AGB_t2) / AGB_t1) >= intensity_threshold, ((AGB_t1 - AGB_t2) / AGB_t1) < (- intensity_threshold))
+    CHANGE_MAGNITUDE = np.logical_or((AGB_t1 - AGB_t2) >= magnitude_threshold, (AGB_t1 - AGB_t2) < -magnitude_threshold)
+    
+    # To be a change, a pixel must meet intensity and magnitude requirements
+    CHANGE = np.logical_and(CHANGE_INTENSITY, CHANGE_MAGNITUDE)
     NOCHANGE = CHANGE == False
 
     # Trajectory (changes can be positive or negative)
