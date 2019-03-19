@@ -47,7 +47,9 @@ def main(dir, lat, lon, year1, year2,
         if output == 'ChangeType' or output == 'all':
             if verbose: print ("Calculating Change Type...")
             ChangeType = tile_change.getChangeType(output = True)
-        
+        if output == 'RiskMap' or output == 'all':
+            if verbose: print ("Calculating Deforestation Risk Map...")
+            RiskMap = tile_change.getRiskMap(output = True)
         if verbose: print ("Done!")
     
     except KeyboardInterrupt:
@@ -78,7 +80,7 @@ if __name__ == '__main__':
     required.add_argument('-y2', '--year2', metavar = 'YR', type = int, help = "Second year of data to process.")
     
     # Optional arguments
-    optional.add_argument('-o', '--output', choices = ['AGBChange', 'ChangeType', 'all'], default = 'all', help = "Choose which kind of output you want. Defaults to all possible outputs.")
+    optional.add_argument('-o', '--output', choices = ['AGBChange', 'ChangeType', 'RiskMap', 'all'], default = 'all', help = "Choose which kind of output you want. Defaults to all possible outputs.")
     optional.add_argument('-nf', '--nofilter', action = 'store_true', default = True, help = "Use this flag if you don't want to apply a speckle filter.")
     optional.add_argument('-ds', '--downsample_factor', metavar = 'N', action = 'store', type = int, default = 1, help = "Apply downsampling to inputs by specifying an integer factor to downsample by. Defaults to no downsampling.")
     optional.add_argument('-od', '--output_dir', metavar = 'DIR', type = str, default = os.getcwd(), help = "Optionally specify an output directory. Defaults to the present working directory.")
