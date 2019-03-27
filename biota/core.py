@@ -757,7 +757,7 @@ class LoadChange(object):
     Input is two mosaic tiles from LoadTile, will output maps and change statistics.
     """
 
-    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, deforestation_threshold = None, contiguity = 'queen', output_dir = os.getcwd()):
+    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, deforestation_threshold = None, contiguity = 'queen', combine_areas = True, output_dir = os.getcwd()):
         '''
         Initialise
         '''
@@ -970,12 +970,20 @@ class LoadChange(object):
 
                 min_pixels = int(round(self.change_area_threshold / (self.yRes * self.xRes * 0.0001)))
 
-                # Get areas of change that meet minimum area requirement
-                CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
-                CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
-                CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
-                NOCHANGE = CHANGE == False
-            
+                # Get areas of change that meet minimum area requirement (use 'change' pixels for area measurement)
+                if self.combine_areas:
+                    CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
+                    NOCHANGE = CHANGE == False
+                else:
+                    CHANGE_DEF, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & F_NF, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_DEG, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & F_F, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_GRO, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & F_F, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_AFF, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & NF_F, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE = np.logical_or(np.logical_or(CHANGE_DEF, CHANGE_DEG), np.logical_or(CHANGE_GRO, CHANGE_AFF))
+                    NOCHANGE = CHANGE == False
+                            
             # Deforestation can be dramatic; allow a separate treshold to specify an end-biomass for deforestation 
             DEFORESTED = self.tile_t2.getAGB() < self.deforestation_threshold
             
@@ -1023,53 +1031,51 @@ class LoadChange(object):
 
         return self.ChangeType
     
-    def getRiskMap(self, output = False, show = False):
+    def getRiskMap(self, output = False, show = False, med_buffer_size = 50., low_buffer_size = 100.):
         '''
         Fuction to return 'low' 'medium' and 'high' risks of deforestation, based on buffers around change locations.
         
         Authors: Samuel Bowers (University of Edinburgh) and Muri Soares (Fundo Nacional de Desenvolvimento Sustentavel)
         '''
         
-        if not hasattr(self, 'risk_map'):
-            
-            # Get change type from class
-            change_type = self.getChangeType()
-            
-            # Extract 'deforestation' and 'degradation' pixels
-            deforestation = change_type['deforestation'].astype(np.int8)
-            degradation = change_type['degradation'].astype(np.int8)
-            
-            # Repeat change detection, but with no minimum change area threshold. Only process if change_area_threshold not already equal to 0
-            if self.change_area_threshold != 0:
-                change_type_noarea = LoadChange(self.tile_t1, self.tile_t2, change_intensity_threshold = self.change_intensity_threshold, \
-                            change_magnitude_threshold = self.change_magnitude_threshold, change_area_threshold = 0, \
-                            deforestation_threshold = self.deforestation_threshold, contiguity = self.contiguity, output_dir = self.output_dir).getChangeType()
-                deforestation_noarea = change_type_noarea['deforestation'].astype(np.int8)
-            else:
-                deforestation_noarea = change_type['deforestation'].astype(np.int8)
-            
-            # Set up output image
-            risk_map = np.zeros_like(deforestation).astype(np.int8)
+        # Get change type for each pixel
+        change_type = self.getChangeType()
         
-            # High risk of change
-            risk_map[deforestation == 1] = 1
-             
-            # Medium risk of change
-            med_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(50. / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 50 m buffer
-            risk_map[np.logical_and(risk_map == 0, med_dilate)] = 2
-            risk_map[np.logical_and(risk_map == 0, degradation)] = 2
-            
-            # Low risk of change
-            low_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(100. / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 100 m buffer
-            risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
-            risk_map[np.logical_and(risk_map == 0, deforestation_noarea)] = 3
-            
-            self.risk_map = np.ma.array(risk_map, mask = self.mask)
+        # Extract 'deforestation' and 'degradation' pixels
+        deforestation = change_type['deforestation'].astype(np.int8)
+        degradation = change_type['degradation'].astype(np.int8)
+        
+        # Repeat change detection, but with no minimum change area threshold. Only process if change_area_threshold not already equal to 0
+        if self.change_area_threshold != 0:
+            change_type_noarea = LoadChange(self.tile_t1, self.tile_t2, change_intensity_threshold = self.change_intensity_threshold, \
+                    change_magnitude_threshold = self.change_magnitude_threshold, change_area_threshold = 0, \
+                    deforestation_threshold = self.deforestation_threshold, contiguity = self.contiguity, output_dir = self.output_dir).getChangeType()
+            deforestation_noarea = change_type_noarea['deforestation'].astype(np.int8)
+        else:
+            deforestation_noarea = change_type['deforestation'].astype(np.int8)
+        
+        # Set up output image
+        risk_map = np.zeros_like(deforestation).astype(np.int8)
+        
+        # High risk of change
+        risk_map[deforestation == 1] = 1
+        
+        # Medium risk of change
+        med_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(med_buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 50 m buffer
+        risk_map[np.logical_and(risk_map == 0, med_dilate)] = 2
+        risk_map[np.logical_and(risk_map == 0, degradation)] = 2
+        
+        # Low risk of change
+        low_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(low_buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 100 m buffer
+        risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
+        risk_map[np.logical_and(risk_map == 0, deforestation_noarea)] = 3
+        
+        self.risk_map = np.ma.array(risk_map, mask = self.mask)
         
         self.risk_map.mask = self.mask
-
+        
         if output: self.__outputGeoTiff(self.risk_map,'RiskMap')
-
+        
         if show: self.__showArray(self.risk_map, title = 'Deforestation risk map', cbartitle = 'Low - High risk', vmin = 0, vmax = 3, cmap = 'autumn')
         
         return self.risk_map
