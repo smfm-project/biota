@@ -780,7 +780,7 @@ class LoadChange(object):
 
         self.hem_NS = tile_t1.hem_NS
         self.hem_EW = tile_t1.hem_EW
-
+        
         # Get GDAL geotransform and projection
         self.geo_t = tile_t1.geo_t
         self.proj = tile_t1.proj
@@ -790,6 +790,7 @@ class LoadChange(object):
         self.change_magnitude_threshold = change_magnitude_threshold
         self.change_area_threshold = change_area_threshold
         self.deforestation_threshold = deforestation_threshold
+        self.combine_areas = combine_areas
         
         # Set deforestation_treshold equal to forest_threshold if not in use
         if self.deforestation_threshold is None: self.deforestation_threshold = self.tile_t1.forest_threshold
