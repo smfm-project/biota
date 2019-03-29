@@ -21,7 +21,7 @@ To install Anaconda Python, open a terminal window, change directory to the loca
     wget https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
     bash Anaconda3-2018.12-Linux-x86_64.sh
 
-Once complete, you'll need to add this version of Python to your .bashrc file as follows (replacing ``~/`` with your installation directory):
+Once installation is complete, answer ``yes`` to the prompt asking if you wish the installer to initialize Anaconda3. In case you answer no, you can manually replicate its functionality by adding this version of Python to your .bashrc file as follows (replacing ``~/`` with your installation directory):
 
 .. code-block:: console
 
@@ -44,7 +44,7 @@ To ensure you are working with the appropriate version of Python as well as the 
 
 .. code-block:: console
 
-    conda create -n biota python=3.7 tqdm scikit-image pyshp gdal
+    conda create -n biota -c conda-forge python=3.7 tqdm scikit-image pyshp gdal
 
 Activate the ``biota`` environment whenever opening a new terminal window by running this command:
 
@@ -52,7 +52,7 @@ Activate the ``biota`` environment whenever opening a new terminal window by run
 
     conda activate biota
 
-..NOTE:: Remember to activate the ``biota`` environment whenever you want to use ``biota``.
+.. NOTE:: Remember to activate the ``biota`` environment whenever you want to use ``biota``.
 
 Installing biota
 ----------------
@@ -63,7 +63,7 @@ To install ``biota``, you will need to use the version control software ``git`` 
 
     git clone https://bitbucket.org/sambowers/biota.git
 
-To install ``biota``, run the following command:
+To install ``biota``, ``cd`` to the ``biota`` directory and run the following command:
 
 .. code-block:: console
 
@@ -84,7 +84,7 @@ To avoid having to reference the full path of the Python scripts in biota when u
 
 .. code-block:: console
 
-    echo "alias biota='_biota() { python ~/full/path/to/biota/cli/"$1".py $(shift; echo "$@") ;}; _biota'" >> ~/.bashrc
+    alias biota='_biota() { python ~/full/path/to/biota/cli/"$1".py $(shift; echo "$@") ;}; _biota'
 
 This creates a function that enables you to call ``biota`` just by typing ``biota`` in your terminal window. To run this function, restart your terminal or run ``bash`` (you will only need to do this once). You will then need to activate the ``biota`` environment once again.
 

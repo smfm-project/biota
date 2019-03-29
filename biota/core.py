@@ -9,6 +9,7 @@ import os
 from osgeo import gdal
 from scipy import ndimage
 import scipy.stats as stats
+import scipy.ndimage.morphology
 import skimage.measure
 
 import matplotlib.pyplot as plt
@@ -28,15 +29,30 @@ These are two classes for loading individual tiles and compliling them into a ch
 
 class LoadTile(object):
     """
-    An ALOS mosaic tile.
-    Mosaic tiles have the following properties:f
+    Class to load an ALOS mosaic tile, and extract properties related to properties of forest in the tile.
 
-    Attributes:
-        lat:
-        lon:
-        DN: An array of uncalibrated digital numbers from the ALOS tile.
-        mask:
+    Mosaic tiles require the following attributes to be loaded:
+        data_dir: Directory containing data from the ALOS mosaic. Files should retain the original file structure provided by JAXA.
+        lat: Latitude of the upper-left hand corner of the mosaic tile.
+        lon: Longitude of the upper-left hand corner of the mosaic tile.
+        year: Year of the ALOS mosaic tile
+        
+    Further optional attributes are:
+        forest_threshold: The theshold of aboveground biomass that separates forest from non-forest in units of tonnes carbon per hectare (tC/ha). Defaults to 10 tC/ha (approximately 10% canopy cover in soutehrn Africa).
+        area_threshold: Contiguous area required to meet the definiton of forest, in units of hectares. Defaults to 0 ha.
+        downsample_factor:
+        lee_filter: Apply a radar speckle filter to the ALOS image. Defaults to True.
+        window_size: Size of lee_filter window. Must be an odd integer. Defaults to 5.
+        contiguity: When applying an area_threshold, a forest area could be considered continuous when directly adjacent ("rook's move") or diagonally adjacent to another forest pixel ("queen's move"). To switch, set this parameter to either 'rook' or 'queen'. Defaults to 'queen'.
+        output_dir: Directory to save output GeoTiff images. Defaults to present working directory.
+
+    For example, to load an ALOS tile:
+        tile_2015 = biota.LoadTile('/path/to/data_dir/', -15, 30, 2015)
+        
+    To load an ALOS tile, but applying a 20 tC/ha forest threshold and a 1 hectare forest definition:
+        tile_2015 = biota.LoadTile('/path/to/data_dir/', -15, 30, 2015, forest_thresold = 20., area_threshold = 1.)
     """
+
 
     def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, window_size = 5, contiguity = 'queen', sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
         """
@@ -71,14 +87,14 @@ class LoadTile(object):
         self.contiguity = contiguity
         self.forest_threshold = forest_threshold
         self.area_threshold = area_threshold
-
+        
         # Deterine hemispheres
         self.hem_NS = 'S' if lat < 0 else 'N'
         self.hem_EW = 'W' if lon < 0 else 'E'
-
+        
         # Determine whether ALOS-1 or ALOS-2
         self.satellite = self.__getSatellite()
-
+        
         # Determine filenames
         self.data_dir = os.path.expanduser(data_dir.rstrip('/'))
         self.directory = self.__getDirectory()
@@ -741,7 +757,7 @@ class LoadChange(object):
     Input is two mosaic tiles from LoadTile, will output maps and change statistics.
     """
 
-    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, contiguity = 'queen', output_dir = os.getcwd(), output = False):
+    def __init__(self, tile_t1, tile_t2, change_intensity_threshold = 0.2, change_magnitude_threshold = 0., change_area_threshold = 0, deforestation_threshold = None, contiguity = 'queen', combine_areas = True, output_dir = os.getcwd()):
         '''
         Initialise
         '''
@@ -764,7 +780,7 @@ class LoadChange(object):
 
         self.hem_NS = tile_t1.hem_NS
         self.hem_EW = tile_t1.hem_EW
-
+        
         # Get GDAL geotransform and projection
         self.geo_t = tile_t1.geo_t
         self.proj = tile_t1.proj
@@ -773,7 +789,12 @@ class LoadChange(object):
         self.change_intensity_threshold = change_intensity_threshold
         self.change_magnitude_threshold = change_magnitude_threshold
         self.change_area_threshold = change_area_threshold
-
+        self.deforestation_threshold = deforestation_threshold
+        self.combine_areas = combine_areas
+        
+        # Set deforestation_treshold equal to forest_threshold if not in use
+        if self.deforestation_threshold is None: self.deforestation_threshold = self.tile_t1.forest_threshold
+        
         self.contiguity = contiguity
 
         self.year_t1 = tile_t1.year
@@ -950,17 +971,28 @@ class LoadChange(object):
 
                 min_pixels = int(round(self.change_area_threshold / (self.yRes * self.xRes * 0.0001)))
 
-                # Get areas of change that meet minimum area requirement
-                CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
-                CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
-                CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
-                NOCHANGE = CHANGE == False
-
+                # Get areas of change that meet minimum area requirement (use 'change' pixels for area measurement)
+                if self.combine_areas:
+                    CHANGE_INCREASE, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & (NF_F | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_DECREASE, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & (F_NF | F_F), True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE = np.logical_or(CHANGE_INCREASE, CHANGE_DECREASE)
+                    NOCHANGE = CHANGE == False
+                else:
+                    CHANGE_DEF, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & F_NF, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_DEG, _ = biota.indices.getContiguousAreas(CHANGE & DECREASE & F_F, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_GRO, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & F_F, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE_AFF, _ = biota.indices.getContiguousAreas(CHANGE & INCREASE & NF_F, True, min_pixels = min_pixels, contiguity = self.contiguity)
+                    CHANGE = np.logical_or(np.logical_or(CHANGE_DEF, CHANGE_DEG), np.logical_or(CHANGE_GRO, CHANGE_AFF))
+                    NOCHANGE = CHANGE == False
+                            
+            # Deforestation can be dramatic; allow a separate treshold to specify an end-biomass for deforestation 
+            DEFORESTED = self.tile_t2.getAGB() < self.deforestation_threshold
+            
             change_type = {}
-
+            
             # These are all the possible definitions. Note: they *must* add up to one.
-            change_type['deforestation'] = F_NF & CHANGE
-            change_type['degradation'] = F_F & CHANGE & DECREASE
+            change_type['deforestation'] = F_NF & CHANGE & DEFORESTED
+            change_type['degradation'] = (F_F & CHANGE & DECREASE) | (F_NF & CHANGE & (DEFORESTED == False))
             change_type['minorloss'] = (F_F | F_NF) & NOCHANGE & DECREASE
 
             change_type['afforestation'] = NF_F & CHANGE
@@ -968,8 +1000,8 @@ class LoadChange(object):
             change_type['minorgain'] = (F_F | NF_F) & NOCHANGE & INCREASE
 
             change_type['nonforest'] = NF_NF
-
-            # Also produce a c for output
+            
+            # Also produce a code for output
             change_code = np.zeros((self.ySize, self.xSize), dtype = np.int8) + self.nodata_byte
 
             change_code[change_type['nonforest'].data] = 0
@@ -999,8 +1031,56 @@ class LoadChange(object):
             self.__showArray(change_code_display, title = 'Change type', cbartitle = 'Class', vmin = 1, vmax = 6, cmap = 'Spectral')
 
         return self.ChangeType
-
-
+    
+    def getRiskMap(self, output = False, show = False, med_buffer_size = 50., low_buffer_size = 100.):
+        '''
+        Fuction to return 'low' 'medium' and 'high' risks of deforestation, based on buffers around change locations.
+        
+        Authors: Samuel Bowers (University of Edinburgh) and Muri Soares (Fundo Nacional de Desenvolvimento Sustentavel)
+        '''
+        
+        # Get change type for each pixel
+        change_type = self.getChangeType()
+        
+        # Extract 'deforestation' and 'degradation' pixels
+        deforestation = change_type['deforestation'].astype(np.int8)
+        degradation = change_type['degradation'].astype(np.int8)
+        
+        # Repeat change detection, but with no minimum change area threshold. Only process if change_area_threshold not already equal to 0
+        if self.change_area_threshold != 0:
+            change_type_noarea = LoadChange(self.tile_t1, self.tile_t2, change_intensity_threshold = self.change_intensity_threshold, \
+                    change_magnitude_threshold = self.change_magnitude_threshold, change_area_threshold = 0, \
+                    deforestation_threshold = self.deforestation_threshold, contiguity = self.contiguity, output_dir = self.output_dir).getChangeType()
+            deforestation_noarea = change_type_noarea['deforestation'].astype(np.int8)
+        else:
+            deforestation_noarea = change_type['deforestation'].astype(np.int8)
+        
+        # Set up output image
+        risk_map = np.zeros_like(deforestation).astype(np.int8)
+        
+        # High risk of change
+        risk_map[deforestation == 1] = 1
+        
+        # Medium risk of change
+        med_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(med_buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 50 m buffer
+        risk_map[np.logical_and(risk_map == 0, med_dilate)] = 2
+        risk_map[np.logical_and(risk_map == 0, degradation)] = 2
+        
+        # Low risk of change
+        low_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(low_buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 100 m buffer
+        risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
+        risk_map[np.logical_and(risk_map == 0, deforestation_noarea)] = 3
+        
+        self.risk_map = np.ma.array(risk_map, mask = self.mask)
+        
+        self.risk_map.mask = self.mask
+        
+        if output: self.__outputGeoTiff(self.risk_map,'RiskMap')
+        
+        if show: self.__showArray(self.risk_map, title = 'Deforestation risk map', cbartitle = 'Low - High risk', vmin = 0, vmax = 3, cmap = 'autumn')
+        
+        return self.risk_map
+     
     def __sumChange(self, change_type, scale = 1):
         '''
         Function for scaling then summing and (optionally) scaling change statistics.
