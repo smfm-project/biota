@@ -8,7 +8,7 @@ In this section, we describe the features of the `biota` GUI. Use this form of `
 The biota window
 ----------------
 
-.. image:: images/gui.png
+.. figure:: images/gui.png
    :width: 600
    :align: center
 
