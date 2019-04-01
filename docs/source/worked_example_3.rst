@@ -1,5 +1,5 @@
-Worked example: part 3
-======================
+Worked example 3: Generating change maps
+========================================
 
 In this section we'll use ``biota`` to generate change maps based on comparisons of AGB estimates.
 
@@ -334,3 +334,9 @@ Visualised in QGIS, the resulting AGB change and change type maps for Kilwa Dist
 .. figure:: images/worked_example_3_output.png
    :scale: 50 %
    :align: center
+
+
+Producing an output with the GUI
+--------------------------------
+
+If you have produced forest properties with worked example 2, this should be no problem: simply tick the Forest change box, select a second year to make comparisons with and select the desired output(s). If you want to refine your analysis, modify any of the secondary parameters. That's it!

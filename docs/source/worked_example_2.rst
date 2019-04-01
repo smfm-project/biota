@@ -1,7 +1,8 @@
-Worked example: part 2
-======================
+Worked example 2: Your first output
+===================================
 
-In this section we'll use ``biota`` to generate maps of gamma0 backscatter, AGB, and forest cover. To use ``biota`` instead of ``biota``, replace each mention of ``biota`` with ``biota``.
+In this section we'll use ``biota`` to generate maps of gamma0 backscatter, AGB, and forest cover. This example covers the 3 forms of `biota`.
+
 
 Open Python and import biota
 ----------------------------
@@ -480,3 +481,9 @@ Visualised in QGIS, the resulting biomass and woody cover maps for Kilwa Distric
 .. figure:: images/worked_example_2_output.png
    :scale: 50 %
    :align: center
+
+
+Producing an output with the GUI
+--------------------------------
+
+once the window is open, select a Latitude and Longitude, then 'Forest property'. Select the year for which you want to donwload and process the data (yes, the download is automatic in the GUI) and tick the boxes you want to output. If you want to refine your analysis, modify the Area threshold and the Biomass threshold. That's it!
