@@ -9,7 +9,7 @@ Welcome to biota's documentation!
 .. figure:: images/alos_examples.png
    :scale: 50 %
    :align: center
-   
+
 The BIOmass Tool for Alos (``biota``) is a Python library that uses data from JAXA's ALOS mosaic product to generate maps of:
 
 * Aboveground biomass
@@ -26,9 +26,11 @@ Contents:
 
 .. toctree::
    :maxdepth: 1
-    
+
    setup.rst
+   usage.rst
    command_line.rst
+   gui.rst
    worked_example_1.rst
    worked_example_2.rst
    worked_example_3.rst
@@ -40,4 +42,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
