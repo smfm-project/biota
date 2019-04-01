@@ -56,7 +56,7 @@ To ensure you are working with the appropriate version of Python as well as the 
 
     conda create -n biota -c conda-forge python=3.7 tqdm scikit-image pyshp gdal
 
-..NOTE::
+.. NOTE::
   the GDAL package is notoriously temperamental. If this step fails, try again and add ` openssl=1.0` at the end of the line
 
 
@@ -66,7 +66,7 @@ Activate the ``biota`` environment whenever opening a new terminal window by run
 
     conda activate biota
 
-..NOTE::
+.. NOTE::
   Remember to activate the ``biota`` environment whenever you want to use ``biota``.
 
 
@@ -94,7 +94,7 @@ Navigate to the folder where you want to install `biota`. To do this in both Lin
 
     cd /full/path/to/your/favorite/folder/
 
-..NOTE::
+.. NOTE::
 
   If you don't want to type the full path (and really, you souldn't), copy it from your file explorer into the terminal after the `cd ` command.
 
