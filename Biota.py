@@ -220,37 +220,37 @@ class mywindow(QtWidgets.QMainWindow):
 
     # help functions
     def lat_help(self):
-        self.ui.label_22.setText('Angular distance North (+) or South (-) of the Equator')
+        self.ui.label_22.setText('Angular distance North (+) or South (-) of the Equator. Please enter the latitude of the top left corner of your area of interest.')
     def lon_help(self):
-        self.ui.label_22.setText('Angular distance East (+) or West (-) of the Greenwich Meridian')
+        self.ui.label_22.setText('Angular distance East (+) or West (-) of the Greenwich Meridian. Please enter the longitude of the top left corner of your area of interest.')
     def g0_help(self):
-        self.ui.label_22.setText('Radar backscatter from ALOS data. Biomass is calculated from horizontal-send and horizontal-receive polarisation')
+        self.ui.label_22.setText('Radar backscatter from ALOS data. Biomass is calculated from horizontal-send and horizontal-receive (HV) polarisation')
     def bio_help(self):
-        self.ui.label_22.setText('Above-ground biomass calculated by BIOTA. REF!!!!!')
+        self.ui.label_22.setText('Above-ground biomass calculated by BIOTA using HV polarisation. The calibration is ??????????')
     def for_help(self):
-        self.ui.label_22.setText('Forest cover (forest or no-forest) determined by combining the abov-ground biomass with the area threshold and biomass threshold')
+        self.ui.label_22.setText('Forest cover (binary result) determined by combining the above-ground biomass with the area threshold and biomass threshold for forested areas.')
     def bch_help(self):
-        self.ui.label_22.setText('change in above-ground biomass between year 1 and year 2')
+        self.ui.label_22.setText('Change in above-ground biomass between year 1 and year 2')
     def fch_help(self):
-        self.ui.label_22.setText('change in forest cover between year 1 and year 2. It is modulated by the Area/Biomass/Percentage change parameters')
+        self.ui.label_22.setText('Change in forest cover between year 1 and year 2, determined by combining change in biomass with the area/biomass/percentage change parameters. Area threshold and biomass threshold also influence the result by affecting the calcuation of forest cover for each year.')
     def rsk_help(self):
-        self.ui.label_22.setText('Probability of deforestation based on ????')
+        self.ui.label_22.setText('Probability of deforestation based on ?????????????')
     def fil_help(self):
-        self.ui.label_22.setText('Activate the speckle filter to get rid of white specks on your final image')
+        self.ui.label_22.setText('Speckle filter to get rid of confusing white specks on your final image.')
     def sub_help(self):
-        self.ui.label_22.setText('The resample factor allows you to divide the final raster resolution by the integer in the box')
+        self.ui.label_22.setText('Divides the final raster resolution by the integer in the box.')
     def pol_help(self):
-        self.ui.label_22.setText('Polarisation is the process through which rays are sent and received with a certain orientation (horizontal or vertical in this case). HV polarisation is used to calculate above-ground biomass')
+        self.ui.label_22.setText('Four polarisation options. Polarisation is the process through which rays are sent and received with a certain orientation (horizontal or vertical in this case). HV polarisation is used to calculate above-ground biomass.')
     def ath_help(self):
-        self.ui.label_22.setText('Minimum area for the forest cover to consider a patch of pixels to be forested')
+        self.ui.label_22.setText('Minimum area for the forest cover to consider a patch of pixels to be forested.')
     def bth_help(self):
-        self.ui.label_22.setText('Minimum above-ground biomass density for the forest cover to consider a patch of pixels to be forested')
+        self.ui.label_22.setText('Minimum above-ground biomass density for the forest cover to consider a patch of pixels to be forested.')
     def ach_help(self):
-        self.ui.label_22.setText('Minimum change in forested area for the change algorithm to classify woodland loss as deforestation')
+        self.ui.label_22.setText('Minimum change in forested area for the change algorithm to classify biomass loss as deforestation.')
     def BCH_help(self):
-        self.ui.label_22.setText('Minimum change in forested biomass for the change algorithm to classify woodland loss as deforestation')
+        self.ui.label_22.setText('Minimum change in forested biomass for the change algorithm to classify biomass loss as deforestation.')
     def pch_help(self):
-        self.ui.label_22.setText('Minimum relatie change in forested biomass for the change algorithm to classify woodland loss as deforestation')
+        self.ui.label_22.setText('Minimum relative change in forested biomass for the change algorithm to classify biomass loss as deforestation.')
 
 
 
