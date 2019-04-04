@@ -91,7 +91,7 @@ def generateURL(lat, lon, year, large_tile = False):
         # Filename patterns are different for ALOS-1/ALOS-2
         if year <= 2010:
             url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS/ext1/PALSAR_MSC/25m_MSC/%s/%s/%s_%s_MOS.tar.gz'
-        elif year > 2010 and year < 2017:
+        elif year > 2010 and year <= 2017:
             url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.tar.gz'
         else:
             url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext2/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.tar.gz'
@@ -128,7 +128,7 @@ def download(lat, lon, year, large_tile = False, output_dir = os.getcwd(), verbo
 
     # Generate download URL
     url = generateURL(lat, lon, year, large_tile = large_tile)
-
+    
     # Check that output directory exists
     output_dir = os.path.abspath(os.path.expanduser(output_dir))
     assert os.path.isdir(output_dir), "The output directory (%s) does not exist. Create it, then try again."%output_dir
