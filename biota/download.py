@@ -146,7 +146,7 @@ def download(lat, lon, year, large_tile = False, output_dir = os.getcwd(), verbo
         cmd = ftp.cwd('/'.join(url.split('/')[3:-1]))
     except ftplib.all_errors as e:
         errorcode_string = str(e).split(None, 1)[0]
-        raise OSError('Failed to connect to JAXA FTP serverm with error code %s.'%errorcode_string)
+        raise OSError('Failed to connect to JAXA FTP server with error code %s.'%errorcode_string)
 
     # Test if file exists on remote server
     if url.split('/')[-1] not in ftp.nlst():
