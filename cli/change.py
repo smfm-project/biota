@@ -81,7 +81,7 @@ if __name__ == '__main__':
     
     # Optional arguments
     optional.add_argument('-o', '--output', choices = ['AGBChange', 'ChangeType', 'RiskMap', 'all'], default = 'all', help = "Choose which kind of output you want. Defaults to all possible outputs.")
-    optional.add_argument('-nf', '--nofilter', action = 'store_true', default = True, help = "Use this flag if you don't want to apply a speckle filter.")
+    optional.add_argument('-nf', '--nofilter', action = 'store_false', default = True, help = "Use this flag if you don't want to apply a speckle filter.")
     optional.add_argument('-ds', '--downsample_factor', metavar = 'N', action = 'store', type = int, default = 1, help = "Apply downsampling to inputs by specifying an integer factor to downsample by. Defaults to no downsampling.")
     optional.add_argument('-od', '--output_dir', metavar = 'DIR', type = str, default = os.getcwd(), help = "Optionally specify an output directory. Defaults to the present working directory.")
     optional.add_argument('-v', '--verbose', action = 'store_true', default = False, help = "Print progress to terminal. Defaults to False.")
