@@ -98,8 +98,6 @@ Navigate to the folder where you want to install `biota`. To do this in both Lin
 
   If you don't want to type the full path (and really, you souldn't), copy it from your file explorer into the terminal after the `cd ` command.
 
-
-
 To install ``biota``, you will need to use the version control software ``git`` (if you don't have ``git``, follow the instructions `here <https://git-scm.com/book/en/v2/Getting-Started-Installing-Git>`_ ). You can collect the ``biota``  source code with the command:
 
 .. code-block:: console
@@ -112,9 +110,7 @@ To install ``biota``, run the following command:
 
     python setup.py install
 
-
-Congratulations, you are now ready to use `biota`. Go to the `next page <https://LINKTOPAGE>`_
-
+Congratulations, you are now ready to use `biota`.
 
 
 What if my install fails?

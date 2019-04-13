@@ -25,15 +25,15 @@ Using biota from the command line
 
 For most applications, the command line interface will be the most straightforward way of using ``biota``. It's also the best way to run batch jobs.
 
-To avoid having to reference the full path of the Python scripts in biota when using command line tools, add a line to your .bashrc file as follows:
+To avoid having to reference the full path of the Python scripts in biota when using command line tools, add the following line to your .bashrc file:
 
 .. code-block:: console
 
-    echo "alias biota='_biota() { python ~/full/path/to/biota/cli/"$1".py $(shift; echo "$@") ;}; _biota'" >> ~/.bashrc
+    alias biota='_biota() { python ~/full/path/to/biota/cli/"$1".py $(shift; echo "$@") ;}; _biota'
 
 This creates a function that enables you to call ``biota`` just by typing ``biota`` in your terminal window. To run this function, restart your terminal or run ``bash`` (you will only need to do this once). You will then need to activate the ``biota`` environment once again.
 
-Take a look at the worked examples to explore the possibilities when you using `biota` from the command line. A full description of the `biota` command line tool is available HERE (insert link when tool goes online)!!!!!!
+Take a look at the worked examples to explore the possibilities when you using `biota` from the command line.
 
 
 Using the biota Graphical User Interface (GUI)
