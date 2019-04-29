@@ -83,8 +83,6 @@ If you want to use the `biota` graphical interface, you need an extra package ca
 
     pip install pyqt5
 
-
-
 Installing biota
 ----------------
 
@@ -112,6 +110,10 @@ To install ``biota``, run the following command:
 
 Congratulations, you are now ready to use `biota`.
 
+Can I get a Dockerfile?
+-----------------------
+
+Coming soon!
 
 What if my install fails?
 ~~~~~~~~~~~~~~~~~~~~~~~~~
