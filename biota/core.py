@@ -1032,7 +1032,7 @@ class LoadChange(object):
 
         return self.ChangeType
     
-    def getRiskMap(self, output = False, show = False, med_buffer_size = 50., low_buffer_size = 100.):
+    def getRiskMap(self, output = False, show = False, buffer_size = 50.):
         '''
         Fuction to return 'low' 'medium' and 'high' risks of deforestation, based on buffers around change locations.
         
@@ -1044,38 +1044,29 @@ class LoadChange(object):
         
         # Extract 'deforestation' and 'degradation' pixels
         deforestation = change_type['deforestation'].astype(np.int8)
-        #degradation = change_type['degradation'].astype(np.int8)
         
-        # Repeat change detection, but with no minimum change area threshold. Only process if change_area_threshold not already equal to 0
-        if self.deforestation_threshold != 0:
+        # Repeat change detection, but with no minimum change area threshold. Only process if deforestation_threshold exists
+        if self.deforestation_threshold is not None:
             change_type_noDF = LoadChange(self.tile_t1, self.tile_t2, change_intensity_threshold = self.change_intensity_threshold, \
                     change_magnitude_threshold = self.change_magnitude_threshold, change_area_threshold = self.change_area_threshold, \
-                    deforestation_threshold = 0, contiguity = self.contiguity, output_dir = self.output_dir).getChangeType()
+                    deforestation_threshold = None, contiguity = self.contiguity, output_dir = self.output_dir).getChangeType()
             deforestation_noDF = change_type_noDF['deforestation'].astype(np.int8)
         else:
             deforestation_noDF = change_type['deforestation'].astype(np.int8)
         
         # Set up output image
         risk_map = np.zeros_like(deforestation).astype(np.int8)
-        
-        # Medium risk of change (no deforestation_threshold)
-        risk_map[deforestation_noDF == 1] = 2
-        
+                
         # High risk of change
         risk_map[deforestation == 1] = 1
-                
-        # Low risk of change
-        low_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(med_buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 50 m buffer
-        risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
-        #risk_map[np.logical_and(risk_map == 0, degradation)] = 2
         
         # Medium risk of change (no deforestation_threshold)
-        risk_map[mp.logical_and(risk_map == 3, deforestation_noDF == 1)] = 2
-                
+        risk_map[np.logical_and(risk_map == 0, deforestation_noDF == 1)] = 2
+        
         # Low risk of change
-        #low_dilate = scipy.ndimage.morphology.binary_dilation((deforestation == 1).astype(np.int8), iterations = int(round(low_buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 100 m buffer
-        #risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
-        #risk_map[np.logical_and(risk_map == 0, deforestation_noarea)] = 3
+        low_dilate = scipy.ndimage.morphology.binary_dilation((np.logical_or(deforestation == 1, deforestation_noDF == 1)).astype(np.int8), iterations = int(round(buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 50 m buffer
+        
+        risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
         
         self.risk_map = np.ma.array(risk_map, mask = self.mask)
         
