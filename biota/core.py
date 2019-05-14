@@ -1046,14 +1046,14 @@ class LoadChange(object):
         deforestation = change_type['deforestation'].astype(np.int8)
         
         # Repeat change detection, but with no minimum change area threshold. Only process if deforestation_threshold exists
-        if self.deforestation_threshold is not None:
+        if self.deforestation_threshold != self.tile_t1.forest_threshold:
             change_type_noDF = LoadChange(self.tile_t1, self.tile_t2, change_intensity_threshold = self.change_intensity_threshold, \
                     change_magnitude_threshold = self.change_magnitude_threshold, change_area_threshold = self.change_area_threshold, \
                     deforestation_threshold = None, contiguity = self.contiguity, output_dir = self.output_dir).getChangeType()
             deforestation_noDF = change_type_noDF['deforestation'].astype(np.int8)
         else:
             deforestation_noDF = change_type['deforestation'].astype(np.int8)
-        
+               
         # Set up output image
         risk_map = np.zeros_like(deforestation).astype(np.int8)
                 
@@ -1067,7 +1067,7 @@ class LoadChange(object):
         low_dilate = scipy.ndimage.morphology.binary_dilation((np.logical_or(deforestation == 1, deforestation_noDF == 1)).astype(np.int8), iterations = int(round(buffer_size / ((self.tile_t1.xRes + self.tile_t1.yRes) / 2.), 0))) # 50 m buffer
         
         risk_map[np.logical_and(risk_map == 0, low_dilate)] = 3
-        
+                
         self.risk_map = np.ma.array(risk_map, mask = self.mask)
         
         self.risk_map.mask = self.mask
