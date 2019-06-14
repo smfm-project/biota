@@ -123,7 +123,7 @@ def _interpolateTime(sm):
 
             if np.sum(this_sm.mask == False) > 1:
                 f = scipy.interpolate.interp1d(x[this_sm.mask == False], y[this_sm.mask == False], fill_value = 'extrapolate')
-                interp = f(x)[(x[this_sm.mask == False]).shape[0]/2]
+                interp = f(x)[int(round((x[this_sm.mask == False]).shape[0] / 2))]
             else:
                 interp = -9999.
 
@@ -141,6 +141,7 @@ def _resampleSM(sm_interp, tile, geo_t, interpolation = 'avearge'):
     ds_source = gdal_driver.Create('', sm_interp.shape[0], sm_interp.shape[1], 1, gdal.GDT_Float32)
     ds_source.SetGeoTransform(geo_t)
     ds_source.SetProjection(tile.proj)
+    ds_source.GetRasterBand(1).SetNoDataValue(-9999)
     ds_source.GetRasterBand(1).WriteArray(sm_interp)
 
     ds_dest = gdal_driver.Create('', tile.ySize, tile.xSize, 1, gdal.GDT_Float32)
