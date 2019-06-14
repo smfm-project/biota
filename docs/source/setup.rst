@@ -54,7 +54,7 @@ To ensure you are working with the appropriate version of Python as well as the 
 
 .. code-block:: console
 
-    conda create -n biota -c conda-forge python=3.7 tqdm scikit-image pyshp gdal
+    conda create -n biota -c conda-forge python=3.7 tqdm scikit-image pillow pyshp gdal
 
 .. NOTE::
   the GDAL package is notoriously temperamental. If this step fails, try again and add ` openssl=1.0` at the end of the line
@@ -74,7 +74,7 @@ If you are SURE you won't use anything else than `biota`, you can do without vir
 
 .. code-block:: console
 
-    conda install -c conda-forge python=3.7 tqdm scikit-image pyshp gdal
+    conda install -c conda-forge python=3.7 tqdm scikit-image pillow pyshp gdal
 
 
 If you want to use the `biota` graphical interface, you need an extra package called `PyQt5`. To install it, type:
