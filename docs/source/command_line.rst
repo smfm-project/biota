@@ -68,9 +68,13 @@ To download all tiles for the 5x5 degree area (recommended) covering 35 - 40 deg
 
 To specify an output directory, we can use the ``-o`` option:
 
+.. code-block:: console
+
     biota download -lon 38 -lat -8 -y 2007 2010 -o /path/to/output_dir
 
 ALOS mosaic data are delivered as compressed files, which ``biota`` will decompress. To remove the original files after decompression, use the ``-r`` flag:
+
+.. code-block:: console
 
     biota download -lon 38 -lat -8 -y 2007 2010 -r
 

@@ -17,7 +17,7 @@ Installing Anaconda
 
 We recommend running ``biota`` in Anaconda.
 
-If you are using a Linux machine, open a terminal window, change directory to the location you'd like to install Anaconda Python, and run the following commands:
+If you are using a Linux machine, open a terminal window, change directory to the location you downloaded Anaconda Python, and run the following commands:
 
 .. code-block:: console
 
