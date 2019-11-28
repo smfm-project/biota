@@ -54,7 +54,7 @@ class LoadTile(object):
     """
 
 
-    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = False, window_size = 5, contiguity = 'queen', sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
+    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = True, window_size = 5, contiguity = 'queen', sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -98,8 +98,8 @@ class LoadTile(object):
         # Determine filenames
         self.data_dir = os.path.expanduser(data_dir.rstrip('/'))
         self.directory = self.__getDirectory()
-        self.HH_path = self.__getHHPath()
         self.HV_path = self.__getHVPath()
+        self.HH_path = self.__getHHPath()
         self.mask_path = self.__getMaskPath()
         self.date_path = self.__getDatePath()
 
@@ -221,7 +221,7 @@ class LoadTile(object):
 
         # Stop if the ALOS data don't exist
         if not os.path.isfile(HHpath):
-            raise IOError('No data found for HH polarisation for lat: %s, lon: %s.')
+            raise IOError('No data found for HH polarisation for lat: %s, lon: %s.'%(str(self.lat), str(self.lon)))
 
         return HHpath
 
@@ -234,7 +234,7 @@ class LoadTile(object):
 
         # Stop if the ALOS data don't exist
         if not os.path.isfile(HVpath):
-            raise IOError('No data found for HV polarisation for lat: %s, lon: %s.')
+            raise IOError('No data found for HV polarisation for lat: %s, lon: %s.'%(str(self.lat), str(self.lon)))
 
         return HVpath
 
