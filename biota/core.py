@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import csv
 import datetime as dt
 import itertools
 import math
@@ -54,7 +55,7 @@ class LoadTile(object):
     """
 
 
-    def __init__(self, data_dir, lat, lon, year, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = True, window_size = 5, contiguity = 'queen', sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
+    def __init__(self, data_dir, lat, lon, year, parameter_file = None, forest_threshold = 10., area_threshold = 0., downsample_factor = 1, lee_filter = True, window_size = 5, contiguity = 'queen', sm_dir = os.getcwd(), sm_interpolation = 'average', output_dir = os.getcwd()):
         """
         Loads data and metadata for an ALOS mosaic tile.
         """
@@ -103,6 +104,10 @@ class LoadTile(object):
         self.mask_path = self.__getMaskPath()
         self.date_path = self.__getDatePath()
 
+        # Load AGB parameter file (default, or specified)
+        self.AGB_parameters_path = self.__getAGBParametersPath() if parameter_file == None else os.expanduser(parameter_file)
+        assert os.path.exists(self.AGB_parameters_path), "Specified parameter file (%s) not found."%str(self.AGB_parameters_path)
+        
         # Set up soil moisture data location
         self.SM_dir = os.path.expanduser(sm_dir.rstrip('/'))
         self.SM_interpolation = sm_interpolation
@@ -131,6 +136,9 @@ class LoadTile(object):
 
         # Get Equivalent Number of Looks
         self.nLooks = self.__getnLooks()
+
+        # Load in AGB parameters
+        self.loadAGBParameters(self.AGB_parameters_path)
 
         # Update image metadata where a degree of resampling is included
         if self.downsample_factor != 1:
@@ -264,6 +272,14 @@ class LoadTile(object):
             raise IOError('No data found for date for lat: %s, lon: %s.')
 
         return date
+
+    def __getAGBParametersPath(self):
+        """
+        Get default AGB model parameters
+        """
+        
+        return '/'.join(os.path.dirname(os.path.realpath(__file__)).split('/')[:-1]) + '/cfg/McNicol2018.csv'
+        
 
     def __getOutputPattern(self):
         """
@@ -433,6 +449,21 @@ class LoadTile(object):
         """
 
         self.mask = self.__getMask()
+
+    def loadAGBParameters(self, csv_file):
+        """
+        Load AGB parameters for ALOS-1 and ALOS-2 from appropriately formatted .csv file.
+        """
+        
+        assert csv_file.endswith('.csv'), "Specified parameter file (%s) must be a .csv."%csv_file
+        assert os.path.exists(os.path.expanduser(csv_file)), "Specified parameter file (%s) doesn't exist."%csv_file
+        
+        with open(csv_file) as csvfile:
+            reader = csv.reader(csvfile, delimiter = ',')
+            header = next(reader)
+            self.A1_gradient, self.A1_intercept = [float(i) for i in next(reader)[1:]]
+            self.A2_gradient, self.A2_intercept = [float(i) for i in next(reader)[1:]]
+
 
     def getDN(self, polarisation = 'HV', output = False, show = False):
         """
@@ -640,11 +671,11 @@ class LoadTile(object):
 
             # ALOS-1
             if self.satellite == 'ALOS-1':
-                AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV') - 5.967
+                AGB = self.A1_gradient * self.getGamma0(units = 'natural', polarisation = 'HV') + self.A1_intercept
 
             # ALOS-2 (to calculate)
             elif self.satellite == 'ALOS-2':
-                AGB = 715.667 * self.getGamma0(units = 'natural', polarisation = 'HV') - 5.967
+                AGB = self.A2_gradient * self.getGamma0(units = 'natural', polarisation = 'HV') + self.A2_intercept
 
             else:
                 raise ValueError("Unknown satellite named '%s'. self.satellite must be 'ALOS-1' or 'ALOS-2'."%self.satellite)
