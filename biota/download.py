@@ -128,7 +128,7 @@ def download(lat, lon, year, large_tile = False, output_dir = os.getcwd(), verbo
         A location of the output file
     """
 
-    if verbose: print('Doing %stile for year: %s, lat: %s, lon: %s'%('large ' if large_tile else '', str(year), str(lat), str(lon)))
+    if verbose: print('Downloading %stile for year: %s, lat: %s, lon: %s'%('large ' if large_tile else '', str(year), str(lat), str(lon)))
 
     # Generate download URL
     url = generateURL(lat, lon, year, large_tile = large_tile)
