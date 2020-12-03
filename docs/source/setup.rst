@@ -8,10 +8,6 @@ Preamble
 
 On this page, we explain how to set up your Linux or Windows machine to use `biota`.
 
-.. NOTE::
-    ``biota`` now requires Python 3. It may still work with Python 2.7, but this will no longer be supported.
-
-
 Installing Anaconda
 -------------------
 
@@ -100,7 +96,7 @@ To install ``biota``, you will need to use the version control software ``git`` 
 
 .. code-block:: console
 
-    git clone https://bitbucket.org/sambowers/biota.git
+    git clone https://github.com/smfm-project/biota.git
 
 To install ``biota``, run the following command:
 
@@ -109,13 +105,3 @@ To install ``biota``, run the following command:
     python setup.py install
 
 Congratulations, you are now ready to use `biota`.
-
-Can I get a Dockerfile?
------------------------
-
-Coming soon!
-
-What if my install fails?
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-We've not yet anticipated all installation issues with ``biota``. If you encounter issues, please don't hesitate to get in touch with sam.bowers@ed.ac.uk.
