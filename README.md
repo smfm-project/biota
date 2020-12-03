@@ -16,7 +16,7 @@ These tools are written in Python for use in Linux. All libraries used are avail
 
 ### How does it work? ###
 
-Full documentation is hosted at: http://biota.readthedocs.io/ (under construction).
+Full documentation is hosted at: http://biota.readthedocs.io/.
 
 ### Who do I talk to? ###
 
