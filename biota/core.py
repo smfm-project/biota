@@ -105,7 +105,7 @@ class LoadTile(object):
         self.date_path = self.__getDatePath()
 
         # Load AGB parameter file (default, or specified)
-        self.AGB_parameters_path = self.__getAGBParametersPath() if parameter_file == None else os.path.expanduser(parameter_file)
+        self.AGB_parameters_path = self.__getAGBParametersPath() if parameter_file == None else os.expanduser(parameter_file)
         assert os.path.exists(self.AGB_parameters_path), "Specified parameter file (%s) not found."%str(self.AGB_parameters_path)
         
         # Set up soil moisture data location
