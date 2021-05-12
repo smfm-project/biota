@@ -17,8 +17,8 @@ If you are using a Linux machine, open a terminal window, change directory to th
 
 .. code-block:: console
 
-    wget https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
-    bash Anaconda3-2018.12-Linux-x86_64.sh
+    wget https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh
+    bash Anaconda3-2020.11-Linux-x86_64.sh
 
 Once complete, you'll need to add this version of Python to your .bashrc file as follows (replacing ``~/`` with your installation directory):
 
