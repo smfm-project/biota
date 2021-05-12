@@ -216,6 +216,10 @@ class LoadTile(object):
         # Directory name patterns name patterns are different for ALOS-1/ALOS-2
         if self.satellite == 'ALOS-2':
             name_pattern += '_F02DAR'
+        
+        # Account for changed file format post 2019
+        if self.year >= 2019:
+            name_pattern += '.tif'
 
         # Generate file name
         return name_pattern%(lat_file, lon_file, str(self.year)[-2:], append_pattern)
@@ -850,7 +854,8 @@ class LoadChange(object):
         assert self.tile_t1.year <= self.tile_t2.year, "Input tile_t2 must be from a later year than tile_t1."
         assert self.tile_t1.year != self.tile_t2.year, "Input tile_t1 cannot be from the same year as tile_t2."
         assert self.tile_t1.lee_filter == self.tile_t2.lee_filter, "Only one of the input tiles has been filtered. Both tiles should have the same pre-processing parameters."
-        assert self.tile_t1.proj == self.tile_t2.proj, "Input tiles do not have the same projection."
+        # Removed: covered by other checks, and latest data state projection slightly differently
+        #assert self.tile_t1.proj == self.tile_t2.proj, "Input tiles do not have the same projection."
         assert self.tile_t1.xSize == self.tile_t2.xSize and self.tile_t1.ySize == self.tile_t2.ySize, "Input tiles do not have the same resolution."
         assert self.tile_t1.geo_t == self.tile_t2.geo_t, "Input tiles do not have the same geo_transform."
         assert self.tile_t1.forest_threshold == self.tile_t2.forest_threshold, "'forest_threshold' must be identical for both input tiles."
