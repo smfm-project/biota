@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tarfile
 import tqdm
+from zipfile import ZipFile
 
 import pdb
 
@@ -79,11 +80,11 @@ def generateURL(lat, lon, year, large_tile = False):
         if year <= 2010:
             url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS/ext1/PALSAR_MSC/25m_MSC/%s/%s_%s_MOS.tar.gz'
         elif year > 2010 and year <= 2017:
-            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.tar.gz'
+            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.zip'
         elif year == 2017:
-            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext2/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.tar.gz'
+            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.zip'
         else:
-            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.tar.gz'
+            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s_%s_MOS_F02DAR.zip'
 
         url = url%(str(year), tile_name, str(year)[-2:])
 
@@ -94,11 +95,11 @@ def generateURL(lat, lon, year, large_tile = False):
         if year <= 2010:
             url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS/ext1/PALSAR_MSC/25m_MSC/%s/%s/%s_%s_MOS.tar.gz'
         elif year > 2010 and year <= 2017:
-            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.tar.gz'
+            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.zip'
         elif year == 2017:
-            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext2/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.tar.gz'
+            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext2/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.zip'
         else:
-            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.tar.gz'
+            url = 'ftp://ftp.eorc.jaxa.jp/pub/ALOS-2/ext1/PALSAR-2_MSC/25m_MSC/%s/%s/%s_%s_MOS_F02DAR.zip'
 
         # Special consideration for directory name of 1x1 tile
         lat_dir = int(5 * math.ceil(float(lat)/5))
@@ -178,28 +179,45 @@ def download(lat, lon, year, large_tile = False, output_dir = os.getcwd(), verbo
     exit = ftp.quit()
 
     return output_file
+    
 
-
-def decompress(targz_file, remove = False):
+def decompress_tar(targz_file):
     '''
-    Unzips .tar.gz ALOS mosaic files downloaded from JAXA, and removes original where requested.
+    Unzips a .tar.gz file.
     '''
 
-    assert targz_file.endswith("tar.gz"), "File name must end with .tar.gz to be decompressed."
+    with tarfile.open(targz_file, "r:gz") as tar:
+        tar.extractall(path = targz_file[:-7])
 
-    assert os.path.exists(targz_file), "File %s not found for decompression"%targz_file
+def decompress_zip(zip_file):
+    '''
+    Unzips a .zip file.
+    '''
+
+    with ZipFile(zip_file, 'r') as zip:
+        zip.extractall(path = zip_file.split('.')[0])
+
+def decompress(file_path, remove=False):
+    """wraps around decompress_tar and decompress_zip to decompress yearly ALOS and ALOS-2 mosaics, and removes the compressed files if remove==True"""
+    
+    assert os.path.exists(file_path), "File %s not found for decompression"%file_path
 
     # Check that output file doesn't already exist
-    if os.path.exists(targz_file[:-7]):
-        raise ValueError('File %s already exists at output location. Not extracting.'%targz_file)
+    if os.path.exists(file_path.split('.')[0]):
+        raise ValueError('File %s already exists at output location. Not extracting.'%file_path)
 
-    print('Extracting %s'%targz_file)
+    # select right decompress function
+    if file_path.endswith('.zip'):
+        print('Extracting %s'%file_path)
+        decompress_zip(file_path)
 
-    tar = tarfile.open(targz_file, "r:gz")
-    tar.extractall(path = targz_file[:-7])
-    tar.close()
+    elif file_path.endswith('.tar.gz'): 
+        print('Extracting %s'%file_path)
+        decompress_tar(file_path)
 
-    # Remove compressed file from disk
+    else: 
+        raise ValueError("File name must end with .zip or .tar.gz to be decompressed.")
+
     if remove:
-        assert targz_file.endswith('_MOS.tar.gz') or targz_file.endswith('_MOS_F02DAR.tar.gz'), "remove function should only be used to delete ALOS-1/ALOS2 .tar.gz files"
-        os.remove(targz_file)
+        assert file_path.endswith('_MOS_F02DAR.tar.gz') or file_path.endswith('_MOS.tar.gz'), "remove function should only be used to delete ALOS-1/ALOS2 .tar.gz files"
+        os.remove(file_path)
