@@ -10,4 +10,14 @@ setup(name='biota',
       author='Samuel Bowers',
       author_email='sam.bowers@ed.ac.uk',
       license='GNU General Public License',
-      zip_safe=False)
+      zip_safe=False
+      install_requires=[
+          "numpy>=1.21",
+          "matplotlib",
+          "pillow",
+          "scipy",
+          "scikit-image",
+          "tqdm",
+          "pyshp"
+      ]
+      )
