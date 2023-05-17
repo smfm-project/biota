@@ -496,7 +496,7 @@ class LoadTile(object):
             # Divide the sum of DNs by the sum of unmasked pixels to get the mean DN value
             DN = np.zeros_like(DN_sum)
 
-            DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / (block_sum - mask_sum)[self.mask == False]).astype(np.int)
+            DN[self.mask == False] = (DN_sum.astype(np.float)[self.mask == False] / (block_sum - mask_sum)[self.mask == False]).astype(np.int32)
 
         if output: self.__outputGeoTiff(DN, 'DN', dtype = gdal.GDT_Int32)
 
@@ -544,7 +544,7 @@ class LoadTile(object):
             dates_int = np.zeros_like(day_after_launch, dtype = np.int32)
             for day, date in zip(unique_days, unique_dates):
                 dates[day_after_launch == day] = np.datetime64(date,'D')
-                dates_int[day_after_launch == day] = np.int(np.datetime64(date,'D').astype(dt.date).strftime('%Y%m%d'))
+                dates_int[day_after_launch == day] = np.int32(np.datetime64(date,'D').astype(dt.date).strftime('%Y%m%d'))
 
             # Save output to class
             self.date = dates

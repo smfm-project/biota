@@ -123,7 +123,7 @@ def getField(shp, field):
     this_dtype = sf.fields[1:][field_n][1]
 
     if this_dtype == 'N':
-        dtype = np.int
+        dtype = np.int32
     elif this_dtype == 'F':
         dtype = np.float32
     elif this_dtype == 'C':
