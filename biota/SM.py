@@ -194,12 +194,12 @@ def getSM(tile, search_days = 7, interpolation = 'average'):
     assert interpolation in ['average', 'nearest', 'cubic'], "Soil moisture interpolation type must be 'average', 'nearest', or 'cubic'."
 
     # Build an array of dates in string format, which is quicker to search
-    dates = tile.getDate().astype(np.int)
+    dates = tile.getDate().astype(np.int32)
 
     # Generate output array
     out = np.zeros_like(tile.mask, dtype = np.float32) + 999999.
 
-    for date in np.unique(dates): #np.unique(tile.getDate()).astype(np.int):
+    for date in np.unique(dates): #np.unique(tile.getDate()).astype(np.int32):
 
         # Nodata (0 = 1st Jan 1970)
         if date == 0:

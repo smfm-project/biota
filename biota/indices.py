@@ -88,7 +88,7 @@ def _calculatePatchSize(tile, patch_size):
     return patch_size
 
 
-def _buildOutputArray(tile, patch_size, dtype = np.int):
+def _buildOutputArray(tile, patch_size, dtype = np.int32):
     """
     Function to generate an appropriately sized output array
 
@@ -101,7 +101,7 @@ def _buildOutputArray(tile, patch_size, dtype = np.int):
     """
 
     # Get nodata value
-    if dtype == np.int:
+    if dtype == np.int32:
         nodata = tile.nodata_byte
     else:
         nodata = tile.nodata
